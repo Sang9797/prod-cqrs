@@ -1,0 +1,155 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+    "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+    "https://checkstyle.org/dtds/configuration_1_3.dtd">
+
+<!--
+    Checkstyle configuration for CQRS Order Service.
+
+    Complements Google Java Format (enforced by Spotless) with naming conventions,
+    import hygiene, and coding standards. Any violation fails the build.
+
+    To auto-format: mvn spotless:apply
+    To check only:  mvn validate
+-->
+<module name="Checker">
+    <property name="charset" value="UTF-8"/>
+    <property name="severity" value="error"/>
+    <property name="fileExtensions" value="java"/>
+
+    <!-- No tab characters — Google style uses spaces -->
+    <module name="FileTabCharacter">
+        <property name="eachLine" value="true"/>
+    </module>
+
+    <!--
+        Test methods conventionally use underscores for readability
+        (e.g. placeOrder_success, getOrder_notFound). Suppress MethodName
+        check for any file under a test source tree.
+    -->
+    <module name="SuppressionSingleFilter">
+        <property name="files" value="[\\/]test[\\/]"/>
+        <property name="checks" value="MethodName"/>
+    </module>
+
+    <!-- Line length: Google style allows 100, we enforce it here -->
+    <module name="LineLength">
+        <property name="max" value="100"/>
+        <property name="ignorePattern" value="^package.*|^import.*|a href|href|http://|https://|ftp://"/>
+    </module>
+
+    <module name="TreeWalker">
+
+        <!-- ── Naming Conventions ──────────────────────────────────────── -->
+
+        <!-- Classes, interfaces, enums: UpperCamelCase -->
+        <module name="TypeName">
+            <property name="format" value="^[A-Z][a-zA-Z0-9]*$"/>
+        </module>
+
+        <!-- Constants (static final): UPPER_SNAKE_CASE -->
+        <module name="ConstantName">
+            <property name="format" value="^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$"/>
+        </module>
+
+        <!-- Local variables: lowerCamelCase -->
+        <module name="LocalVariableName">
+            <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+        </module>
+
+        <!-- Instance fields: lowerCamelCase -->
+        <module name="MemberName">
+            <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+        </module>
+
+        <!-- Methods: lowerCamelCase -->
+        <module name="MethodName">
+            <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+        </module>
+
+        <!-- Packages: all lowercase, dot-separated -->
+        <module name="PackageName">
+            <property name="format" value="^[a-z]+(\.[a-z][a-z0-9]*)*$"/>
+        </module>
+
+        <!-- Parameters: lowerCamelCase -->
+        <module name="ParameterName">
+            <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+        </module>
+
+        <!-- Static non-final fields: lowerCamelCase -->
+        <module name="StaticVariableName">
+            <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+        </module>
+
+        <!-- Catch parameters: lowerCamelCase -->
+        <module name="CatchParameterName">
+            <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+        </module>
+
+        <!-- Lambda parameters: lowerCamelCase or single letter -->
+        <module name="LambdaParameterName">
+            <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+        </module>
+
+        <!-- Record components: lowerCamelCase -->
+        <module name="RecordComponentName">
+            <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+        </module>
+
+        <!-- ── Import Rules ─────────────────────────────────────────────── -->
+
+        <!-- No wildcard imports (e.g. import java.util.*) -->
+        <module name="AvoidStarImport"/>
+
+        <!-- No redundant imports of same package or java.lang -->
+        <module name="RedundantImport"/>
+
+        <!-- No unused imports -->
+        <module name="UnusedImports">
+            <property name="processJavadoc" value="false"/>
+        </module>
+
+        <!-- No imports from restricted packages -->
+        <module name="IllegalImport"/>
+
+        <!-- ── Modifier Order ───────────────────────────────────────────── -->
+
+        <!-- public protected private abstract default static final ... -->
+        <module name="ModifierOrder"/>
+
+        <!-- No redundant modifiers (e.g. public on interface methods) -->
+        <module name="RedundantModifier"/>
+
+        <!-- ── Coding Standards ─────────────────────────────────────────── -->
+
+        <!-- One variable declaration per statement -->
+        <module name="MultipleVariableDeclarations"/>
+
+        <!-- Switch fall-through must be explicitly documented -->
+        <module name="FallThrough"/>
+
+        <!-- Every switch must have a default case -->
+        <module name="MissingSwitchDefault"/>
+
+        <!-- One statement per line -->
+        <module name="OneStatementPerLine">
+            <property name="treatTryResourcesAsStatement" value="true"/>
+        </module>
+
+        <!-- Use long literal suffix L not l (e.g. 100L not 100l) -->
+        <module name="UpperEll"/>
+
+        <!-- Array brackets on type, not variable (String[] args, not String args[]) -->
+        <module name="ArrayTypeStyle"/>
+
+        <!-- ── Class Structure ──────────────────────────────────────────── -->
+
+        <!-- Only one top-level class/interface per file -->
+        <module name="OneTopLevelClass"/>
+
+        <!-- Outer type name must match file name -->
+        <module name="OuterTypeFilename"/>
+
+    </module>
+</module>

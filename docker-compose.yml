@@ -1,0 +1,204 @@
+version: "3.9"
+
+# ============================================================
+# Full production-like stack
+#
+# Services:
+#   app        — CQRS Order Service (Spring Boot 4 / Java 25 / Virtual Threads)
+#   postgres   — Primary database
+#   pgbouncer  — Connection pooler (keeps DB connections low under high concurrency)
+#   nginx      — Reverse proxy / TLS termination
+#   prometheus — Metrics collection
+#   grafana    — Metrics dashboard
+#
+# Usage:
+#   docker compose up --build          # start everything
+#   docker compose up --build app      # rebuild app only
+#   docker compose logs -f app         # follow app logs
+# ============================================================
+
+networks:
+  backend:
+    driver: bridge
+  monitoring:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  prometheus_data:
+  grafana_data:
+
+services:
+
+  # ── Application ────────────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cqrs-order-service:latest
+    container_name: cqrs-order-service
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+      - monitoring
+    ports:
+      - "8080:8080"     # API — exposed for local testing; in production only nginx sees this
+    # Management port (9090) is NOT exposed outside Docker — Prometheus scrapes it internally
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: pgbouncer
+      DB_PORT: 5432
+      DB_NAME: orders_db
+      DB_USERNAME: orders_user
+      DB_PASSWORD: ${DB_PASSWORD:-orders_pass}
+      DB_POOL_SIZE: 10         # Small pool — PgBouncer multiplexes to many virtual threads
+      DB_POOL_MIN_IDLE: 2
+      APP_ADMIN_USER: ${APP_ADMIN_USER:-admin}
+      APP_ADMIN_PASS: ${APP_ADMIN_PASS:-changeme}
+      JAVA_OPTS: >-
+        -XX:+UseContainerSupport
+        -XX:MaxRAMPercentage=75.0
+        -XX:+UseZGC
+        -XX:+ZGenerational
+        -Dfile.encoding=UTF-8
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
+        reservations:
+          memory: 256m
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:9090/actuator/health/liveness"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  # ── PostgreSQL ─────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:17-alpine
+    container_name: cqrs-postgres
+    restart: unless-stopped
+    networks:
+      - backend
+    environment:
+      POSTGRES_DB: orders_db
+      POSTGRES_USER: orders_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-orders_pass}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.utf8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    ports:
+      - "5432:5432"     # exposed for local access (remove in production)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orders_user -d orders_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  # ── PgBouncer (connection pooler) ──────────────────────────────────────────
+  pgbouncer:
+    image: bitnami/pgbouncer:1.23.1
+    container_name: cqrs-pgbouncer
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+    environment:
+      POSTGRESQL_HOST: postgres
+      POSTGRESQL_PORT: 5432
+      POSTGRESQL_DATABASE: orders_db
+      POSTGRESQL_USERNAME: orders_user
+      POSTGRESQL_PASSWORD: ${DB_PASSWORD:-orders_pass}
+      PGBOUNCER_POOL_MODE: transaction
+      PGBOUNCER_MAX_CLIENT_CONN: 1000
+      PGBOUNCER_DEFAULT_POOL_SIZE: 20
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+
+  # ── Nginx ──────────────────────────────────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: cqrs-nginx
+    restart: unless-stopped
+    depends_on:
+      - app
+    networks:
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro    # mount your TLS certs here
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+
+  # ── Prometheus ─────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: cqrs-prometheus
+    restart: unless-stopped
+    networks:
+      - backend
+      - monitoring
+    ports:
+      - "9091:9090"   # mapped to 9091 externally to avoid conflict with app management port
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-remote-write-receiver'   # accepts k6 push via /api/v1/write
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  # ── Grafana ────────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: cqrs-grafana
+    restart: unless-stopped
+    networks:
+      - monitoring
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASS:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 256m

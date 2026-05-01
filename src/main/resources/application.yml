@@ -1,0 +1,82 @@
+spring:
+  application:
+    name: cqrs-order-service
+
+  # ── Virtual Threads (Java 25 / Project Loom) ──────────────────────
+  # One property enables virtual threads across Tomcat, async tasks, and schedulers.
+  threads:
+    virtual:
+      enabled: true
+
+  # ── JPA ───────────────────────────────────────────────────────────
+  jpa:
+    open-in-view: false          # never leak a session into the web layer
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          batch_size: 50
+          order_inserts: true
+          order_updates: true
+
+  # ── Flyway ────────────────────────────────────────────────────────
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
+
+  # ── Security ──────────────────────────────────────────────────────
+  security:
+    user:
+      name: ${APP_ADMIN_USER:admin}
+      password: ${APP_ADMIN_PASS:changeme}
+
+# ── JWT ───────────────────────────────────────────────────────────
+app:
+  jwt:
+    # Base64-encoded HS256 key (≥256 bits). Override APP_JWT_SECRET in production.
+    secret: ${APP_JWT_SECRET:c2VjcmV0LWtleS1mb3ItZGV2ZWxvcG1lbnQtb25seS1ub3QtZm9yLXByb2R1Y3Rpb24=}
+    expiration-ms: ${APP_JWT_EXPIRATION_MS:86400000}
+
+# ── Server ────────────────────────────────────────────────────────
+server:
+  port: 8080
+  shutdown: graceful              # drain in-flight requests before stopping
+  error:
+    include-message: never        # never leak stack traces to clients
+    include-stacktrace: never
+  compression:
+    enabled: true
+    mime-types: application/json
+
+# ── Actuator ──────────────────────────────────────────────────────
+management:
+  server:
+    port: 9090                    # separate management port — never expose 9090 externally
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true             # /health/liveness and /health/readiness for K8s
+
+# ── OpenAPI ───────────────────────────────────────────────────────
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+# ── Logging ───────────────────────────────────────────────────────
+logging:
+  level:
+    com.company.orders: INFO
+    org.hibernate.SQL: WARN
+  pattern:
+    console: "%d{ISO8601} [%thread] %-5level %logger{36} - %msg%n"
+
+# ── Graceful shutdown ─────────────────────────────────────────────
+spring.lifecycle.timeout-per-shutdown-phase: 30s

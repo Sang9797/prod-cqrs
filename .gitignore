@@ -1,0 +1,26 @@
+# Maven
+target/
+*.jar
+*.war
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.classpath
+*.project
+.settings/
+
+# Secrets — NEVER commit
+.env
+*.pem
+*.key
+*.crt
+nginx/ssl/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.log
