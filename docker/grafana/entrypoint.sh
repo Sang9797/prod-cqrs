@@ -1,8 +1,9 @@
 #!/bin/sh
-# Download community dashboards before Grafana starts.
-# Grafana file provisioning picks them up automatically on boot.
+# Download community dashboards into Grafana's writable data dir before startup.
+# A second provisioning provider (dashboards-downloaded) points here.
 
-DASH_DIR=/etc/grafana/provisioning/dashboards
+DASH_DIR=/var/lib/grafana/dashboards
+mkdir -p "$DASH_DIR"
 
 download_dashboard() {
   id=$1
@@ -14,7 +15,6 @@ download_dashboard() {
   fi
 }
 
-download_dashboard 19004   # Spring Boot 3.x / Micrometer
-download_dashboard 4701    # JVM Micrometer
+download_dashboard 19004   # Spring Boot 3.x / Micrometer (correct for SB3 + G1GC)
 
 exec /run.sh

@@ -236,12 +236,13 @@ Prometheus is configured to scrape two targets:
 
 Grafana starts at `http://localhost:3000` (default: admin / admin, or set via `GRAFANA_USER` / `GRAFANA_PASS`).
 
-On first container start, `docker/grafana/entrypoint.sh` downloads two community dashboards:
+On first container start, `docker/grafana/entrypoint.sh` downloads the community dashboard:
 
 | Dashboard | Grafana ID | Covers |
 |---|---|---|
-| Spring Boot 3.x Statistics | 19004 | HTTP request rate, error rate, latency percentiles, HikariCP pool |
-| JVM Micrometer | 4701 | Heap/non-heap memory, GC pause, thread count, CPU |
+| Spring Boot 3.x Statistics | 19004 | Uptime, start time, heap/non-heap memory, GC pause, HTTP request rate, error rate, latency percentiles, HikariCP pool, thread count, CPU |
+
+> Dashboard 4701 (JVM Micrometer) targets Spring Boot 2.x metric names (`process_uptime`, `PS Old Gen`) which no longer exist in Spring Boot 3.x / Micrometer 2.x. Use 19004 instead — it uses the correct names (`process_uptime_seconds`, `area="heap"`).
 
 A third dashboard is provisioned from file and available immediately:
 

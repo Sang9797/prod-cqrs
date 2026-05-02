@@ -129,6 +129,6 @@ CommandBus discovers the handler automatically.
 - Actuator management port: `9090` — all `/actuator/**` endpoints are permitted without JWT
 - Prometheus scrapes `http://172.24.0.1:9090/actuator/prometheus` when running with `make docker-up-infra` + `make run` on Linux (Docker monitoring network gateway). `host.docker.internal` does **not** resolve on Linux.
 - Custom Micrometer metrics: `orders_placed_total`, `orders_confirmed_total`, `orders_cancelled_total`, `inventory_reservations_total`, `inventory_releases_total`, `inventory_adjustments_total`, `cqrs_command_duration_seconds{command}`, `cqrs_query_duration_seconds{query}`
-- Grafana dashboards auto-provisioned: community IDs 19004 (Spring Boot) + 4701 (JVM) downloaded by `docker/grafana/entrypoint.sh` on first start; custom CQRS business metrics dashboard at `docker/grafana/provisioning/dashboards/cqrs-business-metrics.json`
+- Grafana dashboards auto-provisioned: community ID 19004 (Spring Boot 3.x — correct for SB3 + G1GC, uses `process_uptime_seconds` / `area="heap"`) downloaded by `docker/grafana/entrypoint.sh` on first start; custom CQRS business metrics dashboard at `docker/grafana/provisioning/dashboards/cqrs-business-metrics.json`. Do NOT use dashboard 4701 — it targets Spring Boot 2.x metric names that no longer exist.
 
 **Checkstyle rules** (cannot be auto-fixed): no wildcard imports, `UPPER_SNAKE_CASE` constants, one statement per line, `switch` must have `default`, array brackets on type.
