@@ -1,177 +1,150 @@
 # CQRS Order Service
 
-Production-grade CQRS with Command/Query Bus.
+Production-grade CQRS + DDD order and inventory service with GraphQL, JWT authentication, and a full observability stack.
 
 | | |
 |---|---|
-| **Java** | 25 LTS (September 2025) |
+| **Java** | 25 LTS |
 | **Spring Boot** | 4.0.1 |
 | **Concurrency** | Virtual Threads (Project Loom) |
 | **Database** | PostgreSQL 17 |
 | **Migrations** | Flyway |
+| **API** | REST (OpenAPI) + GraphQL |
+| **Auth** | JWT (HS256) + Role/Permission-based access |
 | **Proxy** | Nginx (TLS 1.3, rate limiting, security headers) |
 | **Monitoring** | Prometheus + Grafana |
 
 ---
 
-## Quick start
+## Quick Start
 
 ### Prerequisites
-- Java 25 — download from https://jdk.java.net/25/
+- Java 25 — https://jdk.java.net/25/
 - Maven 3.9+
 - Docker + Docker Compose
 
-### Run locally (H2 in-memory, no Docker needed)
+### Option 1 — H2 in-memory (no Docker)
+
+Fastest way to get running. No database setup needed.
+
 ```bash
 mvn spring-boot:run -Dspring-boot.run.profiles=test
 ```
-Open http://localhost:8080/swagger-ui.html
 
-### Run full production stack
+### Option 2 — Local app + infra in Docker (recommended for development)
+
+Runs PostgreSQL, PgBouncer, Prometheus, and Grafana in Docker.
+Your Spring Boot app runs locally so you get fast restarts and debugger access.
+
+```bash
+# Step 1 — start infra only
+make docker-up-infra
+
+# Step 2 — run app locally against that infra
+make run
+```
+
+### Option 3 — Full Docker stack
+
+Everything in containers, production-like.
+
 ```bash
 make docker-up
 ```
-
-| Service | URL |
-|---|---|
-| API | http://localhost:8080/api/v1/orders |
-| Swagger UI | http://localhost:8080/swagger-ui.html |
-| Prometheus | http://localhost:9091 |
-| Grafana | http://localhost:3000 (admin/admin) |
-
-### Run tests
-```bash
-make test
-```
-
-### Run penetration tests
-```bash
-make docker-up
-make pentest
-```
-
-### Generate Postman collection
-```bash
-make postman
-```
-Generates `postman/collection.json` offline (no running app needed).
-Import it into Postman via **Import → Upload File**.
-
-The collection includes auto-login (JWT), sample request bodies, and saved variables (`orderId`, `token`).
-Override the base URL: `BASE_URL=https://staging.example.com make postman`
 
 ---
 
-## Code Style & Formatting
+## Service URLs
 
-This project enforces **Google Java Format** (formatting) and **Checkstyle** (naming & coding standards).
-Both checks run automatically on every Maven build — any violation fails the build immediately.
+| Service | URL | Notes |
+|---|---|---|
+| REST API | http://localhost:8080/api/v1 | |
+| Swagger UI | http://localhost:8080/swagger-ui.html | |
+| GraphQL endpoint | http://localhost:8080/graphql | POST |
+| GraphiQL browser IDE | http://localhost:8080/graphiql | dev only |
+| Prometheus | http://localhost:9091 | |
+| Grafana | http://localhost:3000 | admin / admin |
+| PostgreSQL | localhost:5432 | db=orders\_db user=orders\_user |
 
-### Auto-format all source files
+---
 
-Run this before committing to fix all formatting issues in one step:
+## Authentication
+
+All API endpoints (REST and GraphQL) require a JWT token.
+
+### 1. Login
 
 ```bash
-mvn spotless:apply
+curl -s -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser","password":"testpass"}' | jq .
 ```
 
-What it fixes automatically:
-- Indentation (2 spaces, Google style)
-- Import ordering and grouping
-- Line wrapping at 100 characters
-- Trailing whitespace and missing newlines at end of file
-
-### Check formatting without changing files
+### 2. Use the token
 
 ```bash
-mvn spotless:check
+export TOKEN="<token from login response>"
+
+# REST
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/orders
+
+# GraphQL
+curl -s -X POST http://localhost:8080/graphql \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"query":"{ lowStock(threshold: 5) { productId sku quantityAvailable } }"}' | jq .
 ```
 
-Exits with an error and shows a diff for every file that is not correctly formatted.
-Does **not** modify any file — safe to run in CI.
+### Test credentials (test / local profiles)
 
-### Check code style (naming, imports, coding rules)
+| Username | Password | Role |
+|---|---|---|
+| `admin` | `changeme` | ROLE\_ADMIN — full access including pricing fields |
+| `testuser` | `testpass` | ROLE\_USER — no access to pricing fields |
+
+---
+
+## Make Commands
 
 ```bash
-mvn checkstyle:check
+make docker-up-infra   # start infra only (postgres, pgbouncer, prometheus, grafana) — no app
+make docker-up         # start full stack including app container
+make docker-down       # stop all containers
+make run               # run app locally (local profile, connects to docker infra)
+make test              # run all tests
+make build             # build production JAR
+make postman           # generate Postman collection (offline)
+make load-test         # k6 load test
+make stress-test       # k6 stress test
+make pentest           # security penetration tests
+make clean             # remove build artifacts and containers
 ```
 
-Enforces:
-- No wildcard imports (`import java.util.*` is forbidden)
-- Naming conventions — `UpperCamelCase` for types, `UPPER_SNAKE_CASE` for `static final` constants, `lowerCamelCase` for methods and fields
-- One statement per line
-- No multiple variable declarations on one line
-- Every `switch` must have a `default` case
-- `switch` fall-through must be intentional (documented)
-- Array brackets on the type (`String[] args`, not `String args[]`)
-- Long literals use uppercase `L` (`100L`, not `100l`)
+---
 
-Configuration file: [`checkstyle.xml`](./checkstyle.xml) at project root.
+## GraphQL
 
-### Run all checks together (recommended before pushing)
+The inventory domain is fully exposed via GraphQL. See **[docs/GRAPHQL.md](docs/GRAPHQL.md)** for the complete reference including:
 
-```bash
-mvn validate
-```
+- Architecture and request lifecycle diagrams
+- All queries and mutations with curl examples
+- Field-driven SQL generation (only requested columns are fetched from DB)
+- Field-level authorization (`unitPrice`, `totalReceived` etc. require `INVENTORY_PRICE` permission)
+- Automatic Persisted Queries (APQ)
+- Query complexity and depth limits
 
-Runs Spotless check then Checkstyle in sequence. This is also triggered automatically by
-`mvn compile`, `mvn test`, `mvn package`, and any other Maven goal.
+Quick example:
 
-### Typical fix workflow
-
-```bash
-# 1. Auto-format everything
-mvn spotless:apply
-
-# 2. Verify formatting is now clean
-mvn spotless:check
-
-# 3. Check naming and coding rules (manual fixes required if violations remain)
-mvn checkstyle:check
-
-# 4. Run full build to confirm everything passes
-mvn validate
-```
-
-### IDE setup
-
-To get format-on-save behaviour in your editor:
-
-**IntelliJ IDEA**
-
-Step 1 — Install the google-java-format plugin
-
-**Settings → Plugins → Marketplace** → search `google-java-format` → Install → Restart.
-
-Step 2 — Enable it
-
-**Settings → google-java-format Settings** → check **Enable google-java-format** → select **Default Google Style** → OK.
-
-`Ctrl+Alt+L` will now produce output identical to `mvn spotless:apply`.
-
-Step 3 (optional) — Add Checkstyle plugin for inline violation highlighting
-
-**Settings → Plugins** → install `CheckStyle-IDEA` → **Settings → Tools → Checkstyle** → add `checkstyle.xml` from the project root as a configuration file. This shows naming/import violations in the editor margin without running Maven.
-
-> **JVM flags caveat:** On newer JDKs the google-java-format plugin may show a warning on startup. If it does, add the following to **Help → Edit Custom VM Options**:
-> ```
-> --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
-> --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
-> --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED
-> --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
-> --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
-> ```
-> No project files need to change.
-
-**VS Code**
-1. Install the [Language Support for Java](https://marketplace.visualstudio.com/items?itemName=redhat.java) extension
-2. Set `"java.format.settings.url"` to point to a Google style XML or use the Spotless extension
-
-**From the terminal (any editor)**
-```bash
-# Run before every commit — formats only staged/changed files is not supported,
-# so format all and stage again:
-mvn spotless:apply && git add -u
+```graphql
+query {
+  lowStock(threshold: 10, limit: 50) {
+    productId
+    sku
+    productName
+    quantityAvailable
+    warehouseName
+  }
+}
 ```
 
 ---
@@ -181,41 +154,115 @@ mvn spotless:apply && git add -u
 ```
 HTTP Client
   └── Nginx (TLS, rate-limit, security headers)
-        └── OrderController     [Presentation]
-              ├── commandBus.dispatch(cmd)
-              │     └── CommandBus → PlaceOrderCommandHandler
-              │                      ConfirmOrderCommandHandler
-              │                      CancelOrderCommandHandler
-              │                           └── OrderRepository → PostgreSQL
-              └── queryBus.dispatch(query)
-                    └── QueryBus  → GetOrderByIdQueryHandler
-                                    ListOrdersByCustomerQueryHandler
-                                         └── OrderRepository → PostgreSQL
+        ├── REST: OrderController / InventoryController   [Presentation]
+        │           ├── commandBus.dispatch(cmd)
+        │           │     └── CommandBus → PlaceOrder/Confirm/CancelOrderCommandHandler
+        │           └── queryBus.dispatch(query)
+        │                 └── QueryBus  → GetOrderById/ListOrdersByCustomerQueryHandler
+        │                                       └── OrderRepository → PostgreSQL
+        │
+        └── GraphQL: InventoryGraphQlController
+                      ├── queryBus.dispatch(query, fields)
+                      │     └── GetInventoryReport/ProductStock/LowStockQueryHandler
+                      │           └── Dynamic SQL (only requested columns) → PostgreSQL
+                      └── InventoryFieldAuthController
+                            └── @SchemaMapping — nulls sensitive fields for ROLE_USER
 ```
 
+### CQRS + DDD Layers
+
+**Domain** (`domain/`) — zero Spring dependencies
+- `Order` aggregate root: state machine `PENDING → CONFIRMED → SHIPPED → DELIVERED` (or `→ CANCELLED`)
+- `Money`, `OrderItem` — immutable value objects
+
+**Application** (`application/`) — use cases as commands/queries
+- Commands in `application/command/`, handlers in `application/handler/command/`
+- Queries in `application/query/`, handlers in `application/handler/query/`
+- Query records carry a `Set<String> fields` — GraphQL passes only requested field names, REST passes `Set.of()` (all)
+
+**Bus** (`bus/`) — handler registry
+- `CommandBus` / `QueryBus` auto-discover handlers via Spring DI — adding `@Component` is enough
+
+**Infrastructure** (`infrastructure/persistence/`) — bridges domain ↔ JPA
+- `OrderRepository` ↔ `OrderJpaRepository` via `OrderJpaEntity`
+- User/Role/Permission JPA entities back the DB-based authentication
+
+**Presentation** (`presentation/`)
+- `OrderController` / `InventoryController` — REST
+- `InventoryGraphQlController` — GraphQL queries and mutations
+- `InventoryFieldAuthController` — GraphQL field-level authorization (SRP separation)
+- `AuthController` — `/api/v1/auth/login` issues JWT tokens
+- `SecurityConfig` — stateless JWT, `DaoAuthenticationProvider`, CSRF disabled
+- `PersistedQueryFilter` — APQ hash registry (runs before Spring Security)
+- `GraphQlConfig` — complexity (max 100) and depth (max 10) instrumentation
+
 ### Virtual Threads
-Enabled via `spring.threads.virtual.enabled=true`.
-- Each HTTP request runs on a virtual thread
-- JDBC blocking calls yield the carrier thread (no thread starvation)
-- Small HikariCP pool (10 connections) serves thousands of concurrent requests
-- ZGC with generational mode for low-latency GC
 
-### Adding a new operation
-1. Create `MyNewCommand.java` implementing `Command<R>`
-2. Create `MyNewCommandHandler.java` with `@Component`
-3. Add endpoint to `OrderController`
-
-The `CommandBus` discovers the new handler automatically. Nothing else changes.
+`spring.threads.virtual.enabled=true` enables virtual threads across Tomcat, `@Async`, and `@Scheduled`.
+JDBC blocking calls yield the carrier thread, so thousands of virtual threads share a small HikariCP pool (10 connections).
 
 ---
 
 ## Security
 
-- Stateless API (no sessions)
-- HTTP Basic auth (replace with JWT in production)
-- CSRF disabled (stateless REST APIs don't need it)
-- All secrets via environment variables (never hardcoded)
-- Nginx: TLS 1.3 only, security headers, rate limiting
-- Management port (9090) never exposed externally
-- Non-root Docker container
-- ZGC + container-aware JVM flags
+- **Authentication:** JWT HS256, stateless (no sessions)
+- **Authorization:** Role + Permission model stored in DB (`users → user_roles → roles → role_permissions → permissions`)
+- **Field-level auth:** Sensitive GraphQL fields (`unitPrice`, `totalReceived`, `totalShipped`, `transactionCount`) return `null` for users without `INVENTORY_PRICE` permission
+- **GraphQL protection:** Query complexity limit (100) and depth limit (10) — rejects expensive queries before execution
+- **Persisted Queries:** Clients send a hash instead of full query text on repeat requests
+- **Transport:** Nginx TLS 1.3, security headers, rate limiting
+- **Secrets:** All via environment variables — see `.env.example`
+- **Management port (9090):** Never exposed externally — Prometheus scrapes it internally
+
+---
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and fill in production values:
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Required | Description |
+|---|---|---|
+| `DB_PASSWORD` | yes | PostgreSQL password |
+| `APP_JWT_SECRET` | yes | Base64-encoded HS256 key (min 32 bytes). Generate: `openssl rand -base64 32` |
+| `APP_JWT_EXPIRATION_MS` | no | Token TTL in ms (default: 86400000 = 24h) |
+| `GRAFANA_USER` | no | Grafana admin username (default: admin) |
+| `GRAFANA_PASS` | no | Grafana admin password |
+
+---
+
+## Code Style
+
+Google Java Format (2-space indent, 100-char lines) + Checkstyle naming rules. Both enforced on every Maven build.
+
+```bash
+mvn spotless:apply   # auto-fix formatting
+mvn validate         # check formatting + Checkstyle (run before pushing)
+```
+
+Checkstyle rules (must be fixed manually): no wildcard imports, `UPPER_SNAKE_CASE` constants, one statement per line, `switch` must have `default`, array brackets on type.
+
+---
+
+## Testing
+
+```bash
+make test                              # all tests (H2 in-memory, test profile)
+mvn test -Dtest=OrderIntegrationTest   # single test class
+```
+
+Test profile uses H2 with `ddl-auto: create-drop` and seeds users via `src/test/resources/data.sql`.
+
+---
+
+## Postman Collection
+
+```bash
+make postman                                       # generates postman/collection.json
+BASE_URL=https://staging.example.com make postman  # override base URL
+```
+
+Import into Postman via **Import → Upload File**. Includes auto-login (JWT), sample request bodies, and saved variables (`orderId`, `token`).

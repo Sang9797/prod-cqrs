@@ -50,14 +50,14 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: prod
       DB_HOST: pgbouncer
-      DB_PORT: 5432
-      DB_NAME: orders_db
-      DB_USERNAME: orders_user
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-orders_db}
+      DB_USERNAME: ${DB_USER:-orders_user}
       DB_PASSWORD: ${DB_PASSWORD:-orders_pass}
       DB_POOL_SIZE: 10         # Small pool — PgBouncer multiplexes to many virtual threads
       DB_POOL_MIN_IDLE: 2
-      APP_ADMIN_USER: ${APP_ADMIN_USER:-admin}
-      APP_ADMIN_PASS: ${APP_ADMIN_PASS:-changeme}
+      APP_JWT_SECRET: ${APP_JWT_SECRET}
+      APP_JWT_EXPIRATION_MS: ${APP_JWT_EXPIRATION_MS:-86400000}
       JAVA_OPTS: >-
         -XX:+UseContainerSupport
         -XX:MaxRAMPercentage=75.0
@@ -86,8 +86,8 @@ services:
     networks:
       - backend
     environment:
-      POSTGRES_DB: orders_db
-      POSTGRES_USER: orders_user
+      POSTGRES_DB: ${DB_NAME:-orders_db}
+      POSTGRES_USER: ${DB_USER:-orders_user}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-orders_pass}
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.utf8"
     volumes:
@@ -95,9 +95,9 @@ services:
       - ./docker/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
     ports:
-      - "5432:5432"     # exposed for local access (remove in production)
+      - "${DB_PORT:-5432}:5432"     # exposed for local access (remove in production)
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U orders_user -d orders_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-orders_user} -d ${DB_NAME:-orders_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -108,7 +108,7 @@ services:
 
   # ── PgBouncer (connection pooler) ──────────────────────────────────────────
   pgbouncer:
-    image: bitnami/pgbouncer:1.23.1
+    image: edoburu/pgbouncer:latest
     container_name: cqrs-pgbouncer
     restart: unless-stopped
     depends_on:
@@ -117,14 +117,16 @@ services:
     networks:
       - backend
     environment:
-      POSTGRESQL_HOST: postgres
-      POSTGRESQL_PORT: 5432
-      POSTGRESQL_DATABASE: orders_db
-      POSTGRESQL_USERNAME: orders_user
-      POSTGRESQL_PASSWORD: ${DB_PASSWORD:-orders_pass}
-      PGBOUNCER_POOL_MODE: transaction
-      PGBOUNCER_MAX_CLIENT_CONN: 1000
-      PGBOUNCER_DEFAULT_POOL_SIZE: 20
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-orders_db}
+      DB_USER: ${DB_USER:-orders_user}
+      DB_PASSWORD: ${DB_PASSWORD:-orders_pass}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 20
+    ports:
+      - "5433:5432"   # exposed for local app (make run) — connect via localhost:5433
     deploy:
       resources:
         limits:
@@ -164,7 +166,7 @@ services:
       - backend
       - monitoring
     ports:
-      - "9091:9090"   # mapped to 9091 externally to avoid conflict with app management port
+      - "9090:9090"   # mapped to 9091 externally to avoid conflict with app management port
     volumes:
       - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus

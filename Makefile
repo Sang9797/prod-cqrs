@@ -1,4 +1,4 @@
-.PHONY: run test build docker-up docker-down pentest load-test stress-test postman clean help
+.PHONY: run test build docker-up docker-up-infra docker-down pentest load-test stress-test postman clean help
 
 help:
 	@echo ""
@@ -7,7 +7,8 @@ help:
 	@echo "  make run            Start with local profile (needs PostgreSQL)"
 	@echo "  make test           Run all tests"
 	@echo "  make build          Build production JAR"
-	@echo "  make docker-up      Start full stack (app + postgres + nginx + monitoring)"
+	@echo "  make docker-up        Start full stack (app + postgres + nginx + monitoring)"
+	@echo "  make docker-up-infra  Start infra only — postgres, pgbouncer, prometheus, grafana (no app)"
 	@echo "  make docker-down    Stop all containers"
 	@echo "  make pentest        Run security penetration tests"
 	@echo "  make load-test      Run k6 load test  (SLO enforcement)"
@@ -41,6 +42,19 @@ docker-up:
 	@echo "  Prometheus: http://localhost:9091"
 	@echo "  Grafana:    http://localhost:3000"
 	@echo "  PgAdmin:    postgres://localhost:5432/orders_db"
+
+docker-up-infra:
+	cp -n .env.example .env 2>/dev/null || true
+	docker compose up -d postgres pgbouncer prometheus grafana
+	@echo ""
+	@echo "Infra services started (connect your local app to these):"
+	@echo "  PostgreSQL:  localhost:5432  db=orders_db  user=orders_user"
+	@echo "  PgBouncer:   localhost:5432  (via pgbouncer container — use for prod-like pooling)"
+	@echo "  Prometheus:  http://localhost:9090"
+	@echo "  Grafana:     http://localhost:3000"
+	@echo ""
+	@echo "Run your app locally with:"
+	@echo "  make run"
 
 docker-down:
 	docker compose down

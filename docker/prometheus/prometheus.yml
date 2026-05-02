@@ -6,7 +6,12 @@ scrape_configs:
   - job_name: 'cqrs-order-service'
     metrics_path: '/actuator/prometheus'
     static_configs:
-      - targets: ['app:9090']    # internal management port
+      - targets: ['app:8080']             # Docker full-stack (make docker-up)
+        labels:
+          env: 'docker'
+      - targets: ['host.docker.internal:8080']  # local app (make docker-up-infra + make run)
+        labels:
+          env: 'local'
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance

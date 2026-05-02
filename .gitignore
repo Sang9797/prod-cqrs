@@ -13,6 +13,7 @@ target/
 
 # Secrets — NEVER commit
 .env
+.env.local
 *.pem
 *.key
 *.crt
