@@ -50,6 +50,16 @@ make docker-up
 make pentest
 ```
 
+### Generate Postman collection
+```bash
+make postman
+```
+Generates `postman/collection.json` offline (no running app needed).
+Import it into Postman via **Import → Upload File**.
+
+The collection includes auto-login (JWT), sample request bodies, and saved variables (`orderId`, `token`).
+Override the base URL: `BASE_URL=https://staging.example.com make postman`
+
 ---
 
 ## Code Style & Formatting

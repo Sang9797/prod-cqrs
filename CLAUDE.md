@@ -22,6 +22,10 @@ mvn validate          # check formatting + Checkstyle naming rules — fails on 
 # Build
 mvn clean package -DskipTests
 
+# Generate Postman collection (offline, no running app needed)
+make postman                                    # generates postman/collection.json
+BASE_URL=https://staging.example.com make postman  # override base URL
+
 # Docker cleanup
 make docker-down
 make clean

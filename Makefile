@@ -1,4 +1,4 @@
-.PHONY: run test build docker-up docker-down pentest load-test stress-test clean help
+.PHONY: run test build docker-up docker-down pentest load-test stress-test postman clean help
 
 help:
 	@echo ""
@@ -12,6 +12,7 @@ help:
 	@echo "  make pentest        Run security penetration tests"
 	@echo "  make load-test      Run k6 load test  (SLO enforcement)"
 	@echo "  make stress-test    Run k6 stress test (find breaking point)"
+	@echo "  make postman        Generate Postman collection from OpenAPI spec"
 	@echo "  make clean          Remove build artifacts"
 	@echo "────────────────────────────────────────────────────"
 	@echo ""
@@ -76,6 +77,10 @@ stress-test:
 	K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=false \
 	K6_PROMETHEUS_RW_TREND_STATS=p(50),p(90),p(95),p(99) \
 	k6 run --out experimental-prometheus-rw k6/stress-test.js
+
+postman:
+	@chmod +x scripts/gen-postman.sh
+	@./scripts/gen-postman.sh
 
 clean:
 	mvn clean
