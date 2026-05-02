@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+    <changeSet id="003-seed-inventory-data" author="system" context="!test">
+        <sqlFile path="db/changelog/sql/003-seed-inventory-data.sql"/>
+        <rollback>
+            <sql>
+                DELETE FROM inventory_transactions WHERE transaction_id LIKE 'tx-%';
+                DELETE FROM inventory WHERE inventory_id LIKE 'inv-%';
+                DELETE FROM products WHERE product_id LIKE 'prod-%';
+                DELETE FROM warehouses WHERE warehouse_id LIKE 'wh-%';
+                DELETE FROM product_categories WHERE category_id LIKE 'cat-%';
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

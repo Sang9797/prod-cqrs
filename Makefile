@@ -23,7 +23,7 @@ help:
 	@echo "────────────────────────────────────────────────────"
 
 run:
-	mvn spring-boot:run -Dspring-boot.run.profiles=local
+	set -a && . ./.env && set +a && mvn spring-boot:run -Dspring-boot.run.profiles=local
 
 test:
 	mvn test -Dspring.profiles.active=test
@@ -49,8 +49,8 @@ docker-up-infra:
 	@echo ""
 	@echo "Infra services started (connect your local app to these):"
 	@echo "  PostgreSQL:  localhost:5432  db=orders_db  user=orders_user"
-	@echo "  PgBouncer:   localhost:5432  (via pgbouncer container — use for prod-like pooling)"
-	@echo "  Prometheus:  http://localhost:9090"
+	@echo "  PgBouncer:   localhost:5433  (via pgbouncer container — use for prod-like pooling)"
+	@echo "  Prometheus:  http://localhost:9091"
 	@echo "  Grafana:     http://localhost:3000"
 	@echo ""
 	@echo "Run your app locally with:"

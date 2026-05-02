@@ -18,11 +18,10 @@ spring:
           order_inserts: true
           order_updates: true
 
-  # ── Flyway ────────────────────────────────────────────────────────
-  flyway:
+  # ── Liquibase ─────────────────────────────────────────────────────
+  liquibase:
     enabled: true
-    locations: classpath:db/migration
-    validate-on-migrate: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
 
   # ── GraphQL ───────────────────────────────────────────────────────
   graphql:
