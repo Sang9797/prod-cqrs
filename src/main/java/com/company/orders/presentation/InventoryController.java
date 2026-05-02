@@ -56,14 +56,14 @@ public class InventoryController {
       @RequestParam(defaultValue = "100") @Min(1) @Max(500) int pageSize) {
     List<InventoryReportItem> items =
         queryBus.dispatch(
-            new GetInventoryReportQuery(categoryId, warehouseId, minStock, page, pageSize));
+            GetInventoryReportQuery.all(categoryId, warehouseId, minStock, page, pageSize));
     return ResponseEntity.ok(items);
   }
 
   @GetMapping("/products/{productId}/stock")
   @Operation(summary = "Get stock levels for a specific product across all warehouses")
   public ResponseEntity<List<ProductStockItem>> getProductStock(@PathVariable String productId) {
-    List<ProductStockItem> items = queryBus.dispatch(new GetProductInventoryQuery(productId));
+    List<ProductStockItem> items = queryBus.dispatch(GetProductInventoryQuery.all(productId));
     return ResponseEntity.ok(items);
   }
 
@@ -72,7 +72,7 @@ public class InventoryController {
   public ResponseEntity<List<LowStockItem>> getLowStock(
       @RequestParam(defaultValue = "10") @Min(0) int threshold,
       @RequestParam(defaultValue = "100") @Min(1) @Max(500) int limit) {
-    List<LowStockItem> items = queryBus.dispatch(new ListLowStockQuery(threshold, limit));
+    List<LowStockItem> items = queryBus.dispatch(ListLowStockQuery.all(threshold, limit));
     return ResponseEntity.ok(items);
   }
 

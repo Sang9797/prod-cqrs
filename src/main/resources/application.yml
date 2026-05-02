@@ -3,14 +3,13 @@ spring:
     name: cqrs-order-service
 
   # ── Virtual Threads (Java 25 / Project Loom) ──────────────────────
-  # One property enables virtual threads across Tomcat, async tasks, and schedulers.
   threads:
     virtual:
       enabled: true
 
   # ── JPA ───────────────────────────────────────────────────────────
   jpa:
-    open-in-view: false          # never leak a session into the web layer
+    open-in-view: false
     properties:
       hibernate:
         format_sql: false
@@ -25,25 +24,26 @@ spring:
     locations: classpath:db/migration
     validate-on-migrate: true
 
-  # ── Security ──────────────────────────────────────────────────────
-  security:
-    user:
-      name: ${APP_ADMIN_USER:admin}
-      password: ${APP_ADMIN_PASS:changeme}
+  # ── GraphQL ───────────────────────────────────────────────────────
+  graphql:
+    graphiql:
+      enabled: true
+    schema:
+      printer:
+        enabled: true
 
 # ── JWT ───────────────────────────────────────────────────────────
 app:
   jwt:
-    # Base64-encoded HS256 key (≥256 bits). Override APP_JWT_SECRET in production.
     secret: ${APP_JWT_SECRET:c2VjcmV0LWtleS1mb3ItZGV2ZWxvcG1lbnQtb25seS1ub3QtZm9yLXByb2R1Y3Rpb24=}
     expiration-ms: ${APP_JWT_EXPIRATION_MS:86400000}
 
 # ── Server ────────────────────────────────────────────────────────
 server:
   port: 8080
-  shutdown: graceful              # drain in-flight requests before stopping
+  shutdown: graceful
   error:
-    include-message: never        # never leak stack traces to clients
+    include-message: never
     include-stacktrace: never
   compression:
     enabled: true
@@ -52,7 +52,7 @@ server:
 # ── Actuator ──────────────────────────────────────────────────────
 management:
   server:
-    port: 9090                    # separate management port — never expose 9090 externally
+    port: 9090
   endpoints:
     web:
       exposure:
@@ -61,7 +61,7 @@ management:
     health:
       show-details: when-authorized
       probes:
-        enabled: true             # /health/liveness and /health/readiness for K8s
+        enabled: true
 
 # ── OpenAPI ───────────────────────────────────────────────────────
 springdoc:

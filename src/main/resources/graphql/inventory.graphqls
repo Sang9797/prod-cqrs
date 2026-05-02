@@ -1,0 +1,88 @@
+type Query {
+  inventoryReport(
+    categoryId: String
+    warehouseId: String
+    minStock: Int = 0
+    page: Int = 0
+    pageSize: Int = 100
+  ): [InventoryReportItem!]!
+
+  productStock(productId: ID!): [ProductStockItem!]!
+
+  lowStock(threshold: Int = 10, limit: Int = 100): [LowStockItem!]!
+}
+
+type Mutation {
+  reserveInventory(input: ReserveInput!): Boolean!
+  releaseInventory(input: ReleaseInput!): Boolean!
+  adjustInventory(input: AdjustInput!): Boolean!
+}
+
+type InventoryReportItem {
+  parentCategoryName: String!
+  categoryName: String!
+  productId: ID!
+  sku: String!
+  productName: String!
+  unitPrice: Float
+  currency: String!
+  warehouseId: ID!
+  warehouseName: String!
+  region: String!
+  quantityAvailable: Int!
+  quantityReserved: Int!
+  quantityFree: Int!
+  totalReceived: Int
+  totalShipped: Int
+  transactionCount: Int
+  lastMovement: String
+}
+
+type ProductStockItem {
+  productId: ID!
+  sku: String!
+  productName: String!
+  unitPrice: Float
+  currency: String!
+  categoryName: String!
+  warehouseId: ID!
+  warehouseName: String!
+  region: String!
+  quantityAvailable: Int!
+  quantityReserved: Int!
+  quantityFree: Int!
+  lastUpdated: String
+}
+
+type LowStockItem {
+  productId: ID!
+  sku: String!
+  productName: String!
+  warehouseId: ID!
+  warehouseName: String!
+  region: String!
+  quantityAvailable: Int!
+  quantityReserved: Int!
+  quantityFree: Int!
+}
+
+input ReserveInput {
+  productId: ID!
+  warehouseId: ID!
+  quantity: Int!
+  orderId: ID!
+}
+
+input ReleaseInput {
+  productId: ID!
+  warehouseId: ID!
+  quantity: Int!
+  orderId: ID!
+}
+
+input AdjustInput {
+  productId: ID!
+  warehouseId: ID!
+  delta: Int!
+  reason: String!
+}
