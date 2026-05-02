@@ -10,6 +10,7 @@ COPY pom.xml .
 RUN mvn dependency:go-offline -q 2>/dev/null || true
 
 # Copy source and build
+COPY checkstyle.xml .
 COPY src ./src
 RUN apt-get update -qq && apt-get install -y --no-install-recommends maven && \
     mvn clean package -DskipTests -q && \

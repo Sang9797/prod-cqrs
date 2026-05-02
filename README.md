@@ -138,9 +138,30 @@ mvn validate
 To get format-on-save behaviour in your editor:
 
 **IntelliJ IDEA**
-1. Install the [google-java-format plugin](https://plugins.jetbrains.com/plugin/8527-google-java-format)
-2. Enable it under **Settings → google-java-format Settings → Enable google-java-format**
-3. Install the [Save Actions plugin](https://plugins.jetbrains.com/plugin/7642-save-actions) and enable **Reformat file** on save
+
+Step 1 — Install the google-java-format plugin
+
+**Settings → Plugins → Marketplace** → search `google-java-format` → Install → Restart.
+
+Step 2 — Enable it
+
+**Settings → google-java-format Settings** → check **Enable google-java-format** → select **Default Google Style** → OK.
+
+`Ctrl+Alt+L` will now produce output identical to `mvn spotless:apply`.
+
+Step 3 (optional) — Add Checkstyle plugin for inline violation highlighting
+
+**Settings → Plugins** → install `CheckStyle-IDEA` → **Settings → Tools → Checkstyle** → add `checkstyle.xml` from the project root as a configuration file. This shows naming/import violations in the editor margin without running Maven.
+
+> **JVM flags caveat:** On newer JDKs the google-java-format plugin may show a warning on startup. If it does, add the following to **Help → Edit Custom VM Options**:
+> ```
+> --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
+> --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
+> --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED
+> --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
+> --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
+> ```
+> No project files need to change.
 
 **VS Code**
 1. Install the [Language Support for Java](https://marketplace.visualstudio.com/items?itemName=redhat.java) extension
