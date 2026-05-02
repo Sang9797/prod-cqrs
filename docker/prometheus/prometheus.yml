@@ -9,7 +9,7 @@ scrape_configs:
       - targets: ['app:9090']             # Docker full-stack (make docker-up)
         labels:
           env: 'docker'
-      - targets: ['172.24.0.1:9090']  # local app on Linux host (make docker-up-infra + make run)
+      - targets: ['172.22.0.1:9090']  # local app on Linux host (make docker-up-infra + make run)
         labels:
           env: 'local'
     relabel_configs:

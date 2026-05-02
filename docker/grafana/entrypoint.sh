@@ -12,6 +12,9 @@ download_dashboard() {
     echo "[entrypoint] downloading Grafana dashboard $id"
     wget -q -O "$out" "https://grafana.com/api/dashboards/${id}/revisions/latest/download" || \
       echo "[entrypoint] WARNING: could not download dashboard $id (offline?)"
+    # Replace datasource placeholder with the provisioned UID so file-provisioned
+    # dashboards resolve correctly (import UI does this interactively; file provisioning does not).
+    [ -f "$out" ] && sed -i 's/\${DS_PROMETHEUS}/prometheus/g' "$out"
   fi
 }
 

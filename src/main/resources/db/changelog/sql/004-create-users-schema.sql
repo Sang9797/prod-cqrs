@@ -79,11 +79,11 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
     ('role-user',  'perm-order-write');
 
 -- ── Seed users ───────────────────────────────────────────────────
--- Passwords are BCrypt of 'adminpass' and 'userpass' respectively.
+-- Passwords are BCrypt(12) of 'admin123' and 'userpass' respectively.
 -- Override via the user management API in production.
 INSERT INTO users (user_id, username, password_hash, email) VALUES
-    ('user-admin', 'admin', '$2a$12$YSMoS5mHWNFMNJPAqxoAx.A6RMdl22b1FRn7yM02aSdN9iuXvRvEy', 'admin@example.com'),
-    ('user-john',  'john',  '$2a$12$n4kYICpQdXmBG9yVRHgcluDyUf6W6KWPSyXm8VIUEj5I8dxPLT96u', 'john@example.com');
+    ('user-admin', 'admin', '$2a$12$1NCTorNqITrnXY1/5E2Maee8ELNhTo9slJkTlpWu5LtOjPe76vTyu', 'admin@example.com'),
+    ('user-john',  'john',  '$2a$12$rwCOjhU6rDeoFFmb1Mj7LenVIcZc1DwIAcKJBdKhjtbtfRuDXjioy', 'john@example.com');
 
 INSERT INTO user_roles (user_id, role_id) VALUES
     ('user-admin', 'role-admin'),

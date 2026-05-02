@@ -79,7 +79,7 @@ load-test:
 	K6_PASSWORD=$${K6_PASSWORD:-changeme} \
 	K6_PROMETHEUS_RW_SERVER_URL=$(K6_PROMETHEUS_RW_SERVER_URL) \
 	K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=false \
-	K6_PROMETHEUS_RW_TREND_STATS=p(50),p(90),p(95),p(99) \
+	K6_PROMETHEUS_RW_TREND_STATS='p(50),p(90),p(95),p(99)' \
 	k6 run --out experimental-prometheus-rw k6/load-test.js
 
 stress-test:
@@ -89,7 +89,7 @@ stress-test:
 	K6_PASSWORD=$${K6_PASSWORD:-changeme} \
 	K6_PROMETHEUS_RW_SERVER_URL=$(K6_PROMETHEUS_RW_SERVER_URL) \
 	K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=false \
-	K6_PROMETHEUS_RW_TREND_STATS=p(50),p(90),p(95),p(99) \
+	K6_PROMETHEUS_RW_TREND_STATS='p(50),p(90),p(95),p(99)' \
 	k6 run --out experimental-prometheus-rw k6/stress-test.js
 
 postman:

@@ -63,7 +63,7 @@ make docker-up
 | GraphQL endpoint | http://localhost:8080/graphql | POST |
 | GraphiQL browser IDE | http://localhost:8080/graphiql | dev only |
 | Prometheus | http://localhost:9091 | |
-| Grafana | http://localhost:3000 | admin / admin |
+| Grafana | http://localhost:3000 | `GRAFANA_USER` / `GRAFANA_PASS` from `.env` (default: admin / admin) |
 | PostgreSQL | localhost:5432 | db=orders\_db user=orders\_user |
 
 ---
@@ -249,6 +249,54 @@ A third dashboard is provisioned from file and available immediately:
 | Dashboard | File | Covers |
 |---|---|---|
 | CQRS — Business Metrics | `docker/grafana/provisioning/dashboards/cqrs-business-metrics.json` | Orders placed/confirmed/cancelled rate, inventory operations, command/query bus p50/p95/p99 latency |
+
+### Grafana troubleshooting
+
+**Spring Boot 3.x Statistics dashboard shows "No data" / all dropdowns empty**
+
+Two root causes must both be present for this dashboard to work:
+
+**1. `application` label missing from metrics**
+
+Dashboard 19004 filters every panel through a template variable `$application` sourced from
+`label_values(jvm_info, application)`. If the `application` label is absent from your metrics,
+the dropdown stays empty and every panel returns nothing.
+
+Fix — `application.yml` must include:
+
+```yaml
+management:
+  metrics:
+    tags:
+      application: ${spring.application.name}
+```
+
+This is already present in this repo. If you ever see the dropdown empty after a fresh clone,
+verify the app was **rebuilt** (not just restarted) so `target/classes/application.yml` is up to date.
+
+**2. `${DS_PROMETHEUS}` datasource placeholder not resolved**
+
+Community dashboards downloaded from grafana.com contain `"uid": "${DS_PROMETHEUS}"` as a
+datasource reference. The Grafana import UI resolves this interactively, but **file provisioning
+does not** — the placeholder stays literal and every query silently fails.
+
+Fix — `docker/grafana/entrypoint.sh` runs `sed -i 's/${DS_PROMETHEUS}/prometheus/g'` on the
+downloaded JSON immediately after fetching it. If you pull a fresh container and the dashboard
+is still blank, the cached JSON predates this fix. Delete it and let the entrypoint re-download:
+
+```bash
+docker exec cqrs-grafana rm /var/lib/grafana/dashboards/19004.json
+docker restart cqrs-grafana
+```
+
+Or patch the live container without a restart:
+
+```bash
+docker exec cqrs-grafana sh -c 'sed -i "s/\${DS_PROMETHEUS}/prometheus/g" /var/lib/grafana/dashboards/19004.json'
+curl -s -X POST -u "admin:<password>" http://localhost:3000/api/admin/provisioning/dashboards/reload
+```
+
+---
 
 ### Custom metrics
 
