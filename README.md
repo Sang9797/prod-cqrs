@@ -58,6 +58,7 @@ make docker-up
 
 | Service | URL | Notes |
 |---|---|---|
+| **Frontend Dashboard** | http://localhost:5173 | React UI — login, orders, inventory, GraphQL, load tests, metrics |
 | REST API | http://localhost:8080/api/v1 | |
 | Swagger UI | http://localhost:8080/swagger-ui.html | |
 | GraphQL endpoint | http://localhost:8080/graphql | POST |
@@ -103,6 +104,52 @@ curl -s -X POST http://localhost:8080/graphql \
 | `john` | `userpass` | ROLE\_USER — no access to pricing fields |
 
 > **Note:** Credentials for the `local` / `prod` profiles are seeded by Liquibase migration `004-create-users-schema.sql`. The `test` profile uses `src/test/resources/data.sql` instead.
+
+---
+
+## Frontend Dashboard
+
+A React + Vite dashboard is included in the `frontend/` directory. It covers all REST and GraphQL APIs, login/logout, and an integrated k6 load test runner.
+
+### Prerequisites
+
+- Node.js 18+
+- k6 (for load testing) — https://k6.io/docs/get-started/installation/
+
+### Start the frontend
+
+```bash
+cd frontend
+npm install
+npm run dev          # starts on http://localhost:5173
+```
+
+### Start the k6 runner server (optional)
+
+The Load Test page streams live k6 output via a small Express server. Without it the page still shows the k6 command to run manually.
+
+```bash
+cd frontend/k6-server
+npm install
+node index.js        # starts on http://localhost:3001
+```
+
+### Login credentials
+
+| Username | Password | Role | Access |
+|---|---|---|---|
+| `admin` | `admin123` | ROLE\_ADMIN | Full access — all REST, GraphQL, pricing fields |
+| `john` | `userpass` | ROLE\_USER | Read/write orders and inventory; no pricing fields |
+
+### Dashboard pages
+
+| Page | What it does |
+|---|---|
+| **Orders** | Search orders by customer ID, get by ID, place a new order, confirm, cancel |
+| **Inventory** | Report (filterable, paginated), product stock, low-stock alerts, reserve / release / adjust stock |
+| **GraphQL** | Interactive query editor with 6 presets (inventoryReport, productStock, lowStock, reserve, release, adjust) |
+| **Load Test** | Configure VUs + duration, choose test type (load / stress / inventory), run via k6-server or copy the command |
+| **Metrics** | CQRS business metric tiles (orders, inventory counters) + full actuator metric browser |
 
 ---
 

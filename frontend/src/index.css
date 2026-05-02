@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #0f172a;
+    color: #f8fafc;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors;
+  }
+
+  .btn-danger {
+    @apply bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors;
+  }
+
+  .btn-success {
+    @apply bg-green-700 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors;
+  }
+
+  .input {
+    @apply bg-slate-700 border border-slate-600 text-white rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-slate-400;
+  }
+
+  .card {
+    @apply bg-slate-800 rounded-lg border border-slate-700 p-4;
+  }
+
+  .table-base {
+    @apply w-full text-sm text-left text-slate-300;
+  }
+
+  .th {
+    @apply px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider border-b border-slate-700;
+  }
+
+  .td {
+    @apply px-4 py-3 border-b border-slate-700/50;
+  }
+
+  .tr-hover {
+    @apply hover:bg-slate-700/30 transition-colors;
+  }
+}
