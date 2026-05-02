@@ -6,6 +6,8 @@ import com.company.orders.domain.model.Money;
 import com.company.orders.domain.model.Order;
 import com.company.orders.domain.model.OrderItem;
 import com.company.orders.infrastructure.persistence.OrderRepository;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.math.BigDecimal;
 import java.util.List;
 import org.slf4j.Logger;
@@ -19,9 +21,14 @@ public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderComman
 
   private static final Logger LOG = LoggerFactory.getLogger(PlaceOrderCommandHandler.class);
   private final OrderRepository repository;
+  private final Counter ordersPlaced;
 
-  public PlaceOrderCommandHandler(OrderRepository repository) {
+  public PlaceOrderCommandHandler(OrderRepository repository, MeterRegistry meterRegistry) {
     this.repository = repository;
+    this.ordersPlaced =
+        Counter.builder("orders.placed.total")
+            .description("Total number of orders placed")
+            .register(meterRegistry);
   }
 
   @Override
@@ -43,6 +50,7 @@ public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderComman
                         new Money(BigDecimal.valueOf(i.unitPrice()), i.currency())))
             .toList();
     var saved = repository.save(Order.create(cmd.customerId(), items));
+    ordersPlaced.increment();
     LOG.info("[PlaceOrder] created orderId={}", saved.getOrderId());
     return saved;
   }

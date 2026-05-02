@@ -1,5 +1,7 @@
 package com.company.orders.bus.command;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,8 +23,10 @@ public class CommandBus {
 
   private static final Logger LOG = LoggerFactory.getLogger(CommandBus.class);
   private final Map<Class<?>, CommandHandler<?, ?>> registry = new HashMap<>();
+  private final MeterRegistry meterRegistry;
 
-  public CommandBus(List<CommandHandler<?, ?>> handlers) {
+  public CommandBus(List<CommandHandler<?, ?>> handlers, MeterRegistry meterRegistry) {
+    this.meterRegistry = meterRegistry;
     handlers.forEach(
         h -> {
           registry.put(h.commandType(), h);
@@ -42,6 +46,10 @@ public class CommandBus {
           "No handler registered for: " + command.getClass().getSimpleName());
     }
     LOG.debug("[CommandBus] dispatching {}", command.getClass().getSimpleName());
-    return handler.handle(command);
+    return Timer.builder("cqrs.command.duration")
+        .tag("command", command.getClass().getSimpleName())
+        .description("Time to handle a command")
+        .register(meterRegistry)
+        .record(() -> handler.handle(command));
   }
 }

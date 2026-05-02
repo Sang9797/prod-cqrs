@@ -106,19 +106,29 @@ CommandBus discovers the handler automatically.
 
 **Field-driven SQL (GraphQL):** Query handlers build a dynamic `SELECT` clause from the `fields` set passed by the controller. The expensive `inventory_transactions` JOIN is skipped entirely when none of `totalReceived`, `totalShipped`, `transactionCount`, `lastMovement` are requested. See `docs/GRAPHQL.md` §8 for full detail.
 
-**Authentication:** DB-based via `AppUserDetailsService` → `UserJpaRepository`. Users, roles, and permissions are stored in the `users`, `roles`, `permissions`, `user_roles`, `role_permissions` tables. Seeded by Flyway (prod) or `src/test/resources/data.sql` (test profile).
+**Authentication:** DB-based via `AppUserDetailsService` → `UserJpaRepository`. Users, roles, and permissions are stored in the `users`, `roles`, `permissions`, `user_roles`, `role_permissions` tables. Seeded by Liquibase (prod/local) or `src/test/resources/data.sql` (test profile).
 
 **Profiles:**
-- `test` — H2 in-memory, Flyway disabled, JPA `create-drop`, users seeded from `data.sql`
+- `test` — H2 in-memory, Liquibase disabled, JPA `create-drop`, users seeded from `data.sql`
 - `local` — PostgreSQL on localhost
 - `prod` — PostgreSQL via PgBouncer (Docker Compose), secrets from env vars
 
-**Flyway migrations:** `src/main/resources/db/migration/` — runs automatically on startup (prod/local profiles).
-- `V1` — orders schema
-- `V2` — inventory schema
-- `V3` — seed inventory data
-- `V4` — users/roles/permissions schema
+**Liquibase migrations:** `src/main/resources/db/changelog/` — runs automatically on startup (prod/local profiles).
+- `001` — orders schema
+- `002` — inventory schema
+- `003` — seed inventory data
+- `004` — users/roles/permissions schema + seed users (`admin` / `adminpass`, `john` / `userpass`)
 
-**Environment variables (prod):** `APP_JWT_SECRET` (required, base64 HS256 key), `DB_PASSWORD` (required). See `.env.example`. `APP_ADMIN_USER` / `APP_ADMIN_PASS` are **not used** — users are managed via the DB.
+**Test credentials (local/prod profiles — from Liquibase seed):**
+- `admin` / `admin123` (ROLE_ADMIN)
+- `john` / `userpass` (ROLE_USER)
+
+**Environment variables (prod):** `APP_JWT_SECRET` (required, base64 HS256 key), `DB_PASSWORD` (required). See `.env.example`.
+
+**Observability:**
+- Actuator management port: `9090` — all `/actuator/**` endpoints are permitted without JWT
+- Prometheus scrapes `http://172.24.0.1:9090/actuator/prometheus` when running with `make docker-up-infra` + `make run` on Linux (Docker monitoring network gateway). `host.docker.internal` does **not** resolve on Linux.
+- Custom Micrometer metrics: `orders_placed_total`, `orders_confirmed_total`, `orders_cancelled_total`, `inventory_reservations_total`, `inventory_releases_total`, `inventory_adjustments_total`, `cqrs_command_duration_seconds{command}`, `cqrs_query_duration_seconds{query}`
+- Grafana dashboards auto-provisioned: community IDs 19004 (Spring Boot) + 4701 (JVM) downloaded by `docker/grafana/entrypoint.sh` on first start; custom CQRS business metrics dashboard at `docker/grafana/provisioning/dashboards/cqrs-business-metrics.json`
 
 **Checkstyle rules** (cannot be auto-fixed): no wildcard imports, `UPPER_SNAKE_CASE` constants, one statement per line, `switch` must have `default`, array brackets on type.

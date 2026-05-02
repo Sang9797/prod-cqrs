@@ -93,7 +93,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
-    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+      - ./docker/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf -c hba_file=/etc/postgresql/pg_hba.conf -c password_encryption=md5
     ports:
       - "${DB_PORT:-5432}:5432"     # exposed for local access (remove in production)
     healthcheck:
@@ -166,7 +168,7 @@ services:
       - backend
       - monitoring
     ports:
-      - "9090:9090"   # mapped to 9091 externally to avoid conflict with app management port
+      - "9091:9090"   # 9091 on host to avoid conflict with app management port (9090)
     volumes:
       - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
@@ -192,7 +194,9 @@ services:
       - "3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning
+      - ./docker/grafana/entrypoint.sh:/entrypoint.sh:ro
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASS:-admin}

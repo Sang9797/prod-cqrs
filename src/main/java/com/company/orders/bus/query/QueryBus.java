@@ -1,5 +1,7 @@
 package com.company.orders.bus.query;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,8 +15,10 @@ public class QueryBus {
 
   private static final Logger LOG = LoggerFactory.getLogger(QueryBus.class);
   private final Map<Class<?>, QueryHandler<?, ?>> registry = new HashMap<>();
+  private final MeterRegistry meterRegistry;
 
-  public QueryBus(List<QueryHandler<?, ?>> handlers) {
+  public QueryBus(List<QueryHandler<?, ?>> handlers, MeterRegistry meterRegistry) {
+    this.meterRegistry = meterRegistry;
     handlers.forEach(
         h -> {
           registry.put(h.queryType(), h);
@@ -34,6 +38,10 @@ public class QueryBus {
           "No handler registered for: " + query.getClass().getSimpleName());
     }
     LOG.debug("[QueryBus] dispatching {}", query.getClass().getSimpleName());
-    return handler.handle(query);
+    return Timer.builder("cqrs.query.duration")
+        .tag("query", query.getClass().getSimpleName())
+        .description("Time to handle a query")
+        .register(meterRegistry)
+        .record(() -> handler.handle(query));
   }
 }

@@ -8,7 +8,7 @@ Production-grade CQRS + DDD order and inventory service with GraphQL, JWT authen
 | **Spring Boot** | 4.0.1 |
 | **Concurrency** | Virtual Threads (Project Loom) |
 | **Database** | PostgreSQL 17 |
-| **Migrations** | Flyway |
+| **Migrations** | Liquibase |
 | **API** | REST (OpenAPI) + GraphQL |
 | **Auth** | JWT (HS256) + Role/Permission-based access |
 | **Proxy** | Nginx (TLS 1.3, rate limiting, security headers) |
@@ -99,8 +99,10 @@ curl -s -X POST http://localhost:8080/graphql \
 
 | Username | Password | Role |
 |---|---|---|
-| `admin` | `changeme` | ROLE\_ADMIN — full access including pricing fields |
-| `testuser` | `testpass` | ROLE\_USER — no access to pricing fields |
+| `admin` | `admin123` | ROLE\_ADMIN — full access including pricing fields |
+| `john` | `userpass` | ROLE\_USER — no access to pricing fields |
+
+> **Note:** Credentials for the `local` / `prod` profiles are seeded by Liquibase migration `004-create-users-schema.sql`. The `test` profile uses `src/test/resources/data.sql` instead.
 
 ---
 
@@ -212,7 +214,55 @@ JDBC blocking calls yield the carrier thread, so thousands of virtual threads sh
 - **Persisted Queries:** Clients send a hash instead of full query text on repeat requests
 - **Transport:** Nginx TLS 1.3, security headers, rate limiting
 - **Secrets:** All via environment variables — see `.env.example`
-- **Management port (9090):** Never exposed externally — Prometheus scrapes it internally
+- **Management port (9090):** Not exposed externally — Prometheus scrapes it internally. All `/actuator/**` endpoints are permitted without JWT (management traffic is network-isolated).
+
+---
+
+## Observability
+
+### Prometheus scrape target
+
+The app exposes metrics at `http://localhost:9090/actuator/prometheus` (management port).
+Prometheus is configured to scrape two targets:
+
+| Target | Used when |
+|---|---|
+| `app:9090` | Full Docker stack (`make docker-up`) |
+| `172.24.0.1:9090` | Local app + Docker infra (`make docker-up-infra` + `make run`) — Linux Docker gateway IP |
+
+> On Linux `host.docker.internal` does not resolve inside containers. The gateway IP `172.24.0.1` is used instead. If your monitoring network gateway differs, update `docker/prometheus/prometheus.yml`.
+
+### Grafana dashboards
+
+Grafana starts at `http://localhost:3000` (default: admin / admin, or set via `GRAFANA_USER` / `GRAFANA_PASS`).
+
+On first container start, `docker/grafana/entrypoint.sh` downloads two community dashboards:
+
+| Dashboard | Grafana ID | Covers |
+|---|---|---|
+| Spring Boot 3.x Statistics | 19004 | HTTP request rate, error rate, latency percentiles, HikariCP pool |
+| JVM Micrometer | 4701 | Heap/non-heap memory, GC pause, thread count, CPU |
+
+A third dashboard is provisioned from file and available immediately:
+
+| Dashboard | File | Covers |
+|---|---|---|
+| CQRS — Business Metrics | `docker/grafana/provisioning/dashboards/cqrs-business-metrics.json` | Orders placed/confirmed/cancelled rate, inventory operations, command/query bus p50/p95/p99 latency |
+
+### Custom metrics
+
+The following application-specific metrics are emitted via Micrometer:
+
+| Metric | Type | Description |
+|---|---|---|
+| `orders_placed_total` | Counter | Incremented on every successful `PlaceOrderCommand` |
+| `orders_confirmed_total` | Counter | Incremented on every successful `ConfirmOrderCommand` |
+| `orders_cancelled_total` | Counter | Incremented on every successful `CancelOrderCommand` |
+| `inventory_reservations_total` | Counter | Incremented on every `ReserveInventoryCommand` |
+| `inventory_releases_total` | Counter | Incremented on every `ReleaseInventoryCommand` |
+| `inventory_adjustments_total` | Counter | Incremented on every `AdjustInventoryCommand` |
+| `cqrs_command_duration_seconds` | Timer | Per-command latency, tagged with `command=<CommandClassName>` |
+| `cqrs_query_duration_seconds` | Timer | Per-query latency, tagged with `query=<QueryClassName>` |
 
 ---
 

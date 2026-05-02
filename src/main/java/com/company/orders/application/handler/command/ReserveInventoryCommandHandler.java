@@ -6,6 +6,8 @@ import com.company.orders.domain.exception.ProductNotFoundException;
 import com.company.orders.domain.model.Inventory;
 import com.company.orders.domain.model.TransactionType;
 import com.company.orders.infrastructure.persistence.InventoryRepository;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -19,9 +21,15 @@ public class ReserveInventoryCommandHandler
   private static final Logger LOG = LoggerFactory.getLogger(ReserveInventoryCommandHandler.class);
 
   private final InventoryRepository repository;
+  private final Counter inventoryReservations;
 
-  public ReserveInventoryCommandHandler(InventoryRepository repository) {
+  public ReserveInventoryCommandHandler(
+      InventoryRepository repository, MeterRegistry meterRegistry) {
     this.repository = repository;
+    this.inventoryReservations =
+        Counter.builder("inventory.reservations.total")
+            .description("Total number of inventory reservations")
+            .register(meterRegistry);
   }
 
   @Override
@@ -51,7 +59,7 @@ public class ReserveInventoryCommandHandler
         -cmd.quantity(),
         cmd.orderId(),
         "Reserved for order " + cmd.orderId());
-
+    inventoryReservations.increment();
     LOG.info("[ReserveInventory] reserved orderId={}", cmd.orderId());
     return null;
   }
