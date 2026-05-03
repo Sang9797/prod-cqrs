@@ -52,9 +52,7 @@ public class SecurityConfig {
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             auth ->
-                auth.dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR)
-                    .permitAll()
-                    .requestMatchers("/actuator/**")
+                    auth.requestMatchers("/actuator/**")
                     .permitAll()
                     .requestMatchers("/swagger-ui/**", "/v3/api-docs/**")
                     .permitAll()
