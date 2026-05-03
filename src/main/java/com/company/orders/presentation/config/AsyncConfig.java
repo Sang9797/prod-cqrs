@@ -1,52 +1,26 @@
 package com.company.orders.presentation.config;
 
+import com.company.orders.presentation.context.ContextAwareExecutor;
+import com.company.orders.presentation.context.ContextSnapshotFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.task.TaskDecorator;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 @Configuration
 public class AsyncConfig {
 
-    /**
-     * 🔥 Propagate SecurityContext across threads
-     */
     @Bean
-    public TaskDecorator securityContextTaskDecorator() {
-        return runnable -> {
-            SecurityContext context = SecurityContextHolder.getContext();
-
-            return () -> {
-                SecurityContext previous = SecurityContextHolder.getContext();
-                try {
-                    SecurityContextHolder.setContext(context);
-                    runnable.run();
-                } finally {
-                    SecurityContextHolder.setContext(previous);
-                }
-            };
-        };
+    public ContextSnapshotFactory contextSnapshotFactory() {
+        return new ContextSnapshotFactory();
     }
 
-    /**
-     * 🔥 Main executor used by Spring + GraphQL
-     */
     @Bean
-    public Executor applicationExecutor(TaskDecorator taskDecorator) {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(10);
-        executor.setMaxPoolSize(50);
-        executor.setQueueCapacity(100);
-        executor.setThreadNamePrefix("app-exec-");
-
-        // 🔥 THIS is the key
-        executor.setTaskDecorator(taskDecorator);
-
-        executor.initialize();
-        return executor;
+    public Executor applicationExecutor(ContextSnapshotFactory factory) {
+        return new ContextAwareExecutor(
+                Executors.newVirtualThreadPerTaskExecutor(),
+                factory
+        );
     }
 }
