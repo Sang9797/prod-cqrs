@@ -97,7 +97,7 @@ services:
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     command: postgres -c config_file=/etc/postgresql/postgresql.conf -c hba_file=/etc/postgresql/pg_hba.conf -c password_encryption=md5
     ports:
-      - "${DB_PORT:-5432}:5432"     # exposed for local access (remove in production)
+      - "5432:5432"     # exposed for local access (remove in production)
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-orders_user} -d ${DB_NAME:-orders_db}"]
       interval: 10s

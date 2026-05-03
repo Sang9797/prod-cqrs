@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+  <!-- Spring Boot's %clr color conversion and %wEx exception converter -->
+  <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+  <!-- ── Console appender ──────────────────────────────────────── -->
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+      <!--
+        %-8X{reqId}  : 8-char correlation ID from RequestLoggingFilter (blank on startup)
+        %-10X{user}  : authenticated username from JwtAuthFilter (blank on startup / anonymous)
+      -->
+      <pattern>%clr(%d{HH:mm:ss.SSS}){faint} %clr(%5p) %clr([%15.15t]){faint} %clr(%-8X{reqId}){magenta} %clr(%-10X{user}){yellow} %clr(%-40.40logger{39}){cyan}%clr(:){faint} %m%n%wEx</pattern>
+    </encoder>
+  </appender>
+
+  <!-- ── Rolling file appender — declared for prod but wired below ─ -->
+  <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>logs/app.log</file>
+    <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+      <fileNamePattern>logs/app.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+      <maxFileSize>50MB</maxFileSize>
+      <maxHistory>14</maxHistory>
+      <totalSizeCap>1GB</totalSizeCap>
+    </rollingPolicy>
+    <encoder>
+      <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p [%t] %-40.40logger{39}: %m%n%wEx</pattern>
+    </encoder>
+  </appender>
+
+  <!-- ── Default logger levels ─────────────────────────────────── -->
+  <logger name="com.company.orders" level="INFO"/>
+  <logger name="org.hibernate.SQL" level="WARN"/>
+  <logger name="org.springframework.web" level="WARN"/>
+  <logger name="org.springframework.security" level="WARN"/>
+
+  <!-- ── local profile: verbose SQL + app DEBUG ────────────────── -->
+  <!-- NOTE: <springProfile> must be at top-level — never inside    -->
+  <!--       <root>, <logger>, or <appender>                        -->
+  <springProfile name="local">
+    <logger name="com.company.orders" level="DEBUG"/>
+    <logger name="org.hibernate.SQL" level="DEBUG"/>
+    <logger name="org.hibernate.orm.jdbc.bind" level="TRACE"/>
+  </springProfile>
+
+  <!-- ── Root: CONSOLE always, FILE only on prod ───────────────── -->
+  <root level="INFO">
+    <appender-ref ref="CONSOLE"/>
+  </root>
+
+  <springProfile name="prod">
+    <root level="INFO">
+      <appender-ref ref="FILE"/>
+    </root>
+  </springProfile>
+
+</configuration>

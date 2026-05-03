@@ -73,12 +73,11 @@ springdoc:
     path: /v3/api-docs
 
 # ── Logging ───────────────────────────────────────────────────────
+# Pattern and appenders are configured in logback-spring.xml
 logging:
   level:
     com.company.orders: INFO
     org.hibernate.SQL: WARN
-  pattern:
-    console: "%d{ISO8601} [%thread] %-5level %logger{36} - %msg%n"
 
 # ── Graceful shutdown ─────────────────────────────────────────────
 spring.lifecycle.timeout-per-shutdown-phase: 30s

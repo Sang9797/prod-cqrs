@@ -12,6 +12,7 @@ import com.company.orders.application.query.ProductStockItem;
 import com.company.orders.bus.command.CommandBus;
 import com.company.orders.bus.query.QueryBus;
 import graphql.schema.DataFetchingEnvironment;
+import graphql.schema.SelectedField;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -88,7 +89,7 @@ public class InventoryGraphQlController {
 
   private static Set<String> requestedFields(DataFetchingEnvironment env) {
     return env.getSelectionSet().getImmediateFields().stream()
-        .map(f -> f.getName())
+        .map(SelectedField::getName)
         .collect(Collectors.toUnmodifiableSet());
   }
 

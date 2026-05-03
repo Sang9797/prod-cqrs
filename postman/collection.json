@@ -1,20 +1,44 @@
 {
   "info": {
     "name": "CQRS Order Service",
-    "description": "Production-grade CQRS Order Service — Spring Boot 4 / Java 25 / Virtual Threads",
+    "description": "Production-grade CQRS Order Service \u2014 Spring Boot 4 / Java 25 / Virtual Threads",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl",  "value": "http://localhost:8080", "type": "string" },
-    { "key": "username", "value": "admin",       "type": "string" },
-    { "key": "password", "value": "changeme",    "type": "string" },
-    { "key": "token",    "value": "",             "type": "string" },
-    { "key": "orderId",  "value": "",             "type": "string" }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "username",
+      "value": "admin",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "admin123",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "orderId",
+      "value": "",
+      "type": "string"
+    }
   ],
   "auth": {
     "type": "bearer",
     "bearer": [
-      { "key": "token", "value": "{{token}}", "type": "string" }
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
     ]
   },
   "event": [
@@ -23,17 +47,32 @@
       "script": {
         "type": "text/javascript",
         "exec": [
-          "// Auto-login if token is empty",
-          "if (!pm.variables.get('token')) {",
+          "// Auto-login: runs before every request.",
+          "// pm.sendRequest callback fires before the main request is sent,",
+          "// but the collection bearer {{token}} is already resolved \u2014 so we",
+          "// also call pm.request.headers.upsert to inject the header directly.",
+          "const token = pm.collectionVariables.get('token');",
+          "if (!token) {",
           "  pm.sendRequest({",
-          "    url: pm.variables.get('baseUrl') + '/api/v1/auth/login',",
+          "    url: pm.collectionVariables.get('baseUrl') + '/api/v1/auth/login',",
           "    method: 'POST',",
           "    header: { 'Content-Type': 'application/json' },",
-          "    body: { mode: 'raw', raw: JSON.stringify({ username: pm.variables.get('username'), password: pm.variables.get('password') }) }",
-          "  }, function (err, res) {",
-          "    if (!err && res.code === 200) {",
-          "      pm.collectionVariables.set('token', res.json().token);",
+          "    body: {",
+          "      mode: 'raw',",
+          "      raw: JSON.stringify({",
+          "        username: pm.collectionVariables.get('username'),",
+          "        password: pm.collectionVariables.get('password')",
+          "      })",
           "    }",
+          "  }, function (err, res) {",
+          "    if (err || res.code !== 200) {",
+          "      console.error('Auto-login failed:', err || ('HTTP ' + res.code));",
+          "      return;",
+          "    }",
+          "    const newToken = res.json().token;",
+          "    pm.collectionVariables.set('token', newToken);",
+          "    // Inject directly so THIS request also gets the token",
+          "    pm.request.headers.upsert({ key: 'Authorization', value: 'Bearer ' + newToken });",
           "  });",
           "}"
         ]
@@ -46,6 +85,39 @@
       "item": [
         {
           "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
           "event": [
             {
               "listen": "test",
@@ -54,37 +126,49 @@
                 "exec": [
                   "if (pm.response.code === 200) {",
                   "  pm.collectionVariables.set('token', pm.response.json().token);",
-                  "  pm.test('Token saved', function () { pm.expect(pm.response.json().token).to.be.a('string'); });",
+                  "  pm.test('Token saved', () => pm.expect(pm.response.json().token).to.be.a('string'));",
                   "}"
                 ]
               }
             }
-          ],
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "auth", "login"]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
-              "options": { "raw": { "language": "json" } }
-            }
-          }
+          ]
         }
       ]
     },
     {
-      "name": "Orders",
+      "name": "Order",
       "item": [
         {
           "name": "Place a new order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"customer-001\",\n  \"items\": [\n    {\n      \"productId\": \"prod-001\",\n      \"productName\": \"Widget\",\n      \"quantity\": 2,\n      \"unitPrice\": 29.99,\n      \"currency\": \"USD\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
           "event": [
             {
               "listen": "test",
@@ -93,37 +177,29 @@
                 "exec": [
                   "if (pm.response.code === 201) {",
                   "  pm.collectionVariables.set('orderId', pm.response.json().id);",
-                  "  pm.test('Order ID saved', function () { pm.expect(pm.response.json().id).to.be.a('string'); });",
+                  "  pm.test('Order ID saved', () => pm.expect(pm.response.json().id).to.be.a('string'));",
                   "}"
                 ]
               }
             }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/orders",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "orders"]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"customerId\": \"customer-001\",\n  \"items\": [\n    {\n      \"productId\": \"prod-001\",\n      \"productName\": \"Widget\",\n      \"quantity\": 2,\n      \"unitPrice\": 29.99,\n      \"currency\": \"USD\"\n    }\n  ]\n}",
-              "options": { "raw": { "language": "json" } }
-            }
-          }
+          ]
         },
         {
           "name": "Get order by ID",
           "request": {
             "method": "GET",
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/orders/{{orderId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "orders", "{{orderId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "{{orderId}}"
+              ]
             }
           }
         },
@@ -131,12 +207,22 @@
           "name": "List orders by customer ID",
           "request": {
             "method": "GET",
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/orders?customerId=customer-001",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "orders"],
+              "raw": "{{baseUrl}}/api/v1/orders?customerId=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ],
               "query": [
-                { "key": "customerId", "value": "customer-001", "description": "Customer ID to filter by" }
+                {
+                  "key": "customerId",
+                  "value": ""
+                }
               ]
             }
           }
@@ -145,10 +231,19 @@
           "name": "Confirm a PENDING order",
           "request": {
             "method": "POST",
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/orders/{{orderId}}/confirm",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "orders", "{{orderId}}", "confirm"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "{{orderId}}",
+                "confirm"
+              ]
             }
           }
         },
@@ -157,17 +252,31 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/orders/{{orderId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "orders", "{{orderId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "{{orderId}}"
+              ]
             },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"reason\": \"Customer requested cancellation\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           }
         }
@@ -177,45 +286,92 @@
       "name": "Inventory",
       "item": [
         {
-          "name": "Full inventory report",
+          "name": "Full inventory report (slow query \u2014 use for k6 baseline benchmarking)",
           "request": {
             "method": "GET",
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/inventory/report?page=0&pageSize=100",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "inventory", "report"],
+              "raw": "{{baseUrl}}/api/v1/inventory/report?categoryId=&warehouseId=&minStock=0&page=0&pageSize=100",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventory",
+                "report"
+              ],
               "query": [
-                { "key": "categoryId",  "value": "",    "description": "Filter by category",  "disabled": true },
-                { "key": "warehouseId", "value": "",    "description": "Filter by warehouse", "disabled": true },
-                { "key": "minStock",    "value": "0",   "description": "Minimum stock filter" },
-                { "key": "page",        "value": "0",   "description": "Page number (0-based)" },
-                { "key": "pageSize",    "value": "100", "description": "Page size (1-500)" }
+                {
+                  "key": "categoryId",
+                  "value": ""
+                },
+                {
+                  "key": "warehouseId",
+                  "value": ""
+                },
+                {
+                  "key": "minStock",
+                  "value": "0"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "100"
+                }
               ]
             }
           }
         },
         {
-          "name": "Get product stock across warehouses",
+          "name": "Get stock levels for a specific product across all warehouses",
           "request": {
             "method": "GET",
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/inventory/products/prod-001/stock",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "inventory", "products", "prod-001", "stock"]
+              "raw": "{{baseUrl}}/api/v1/inventory/products/{{productId}}/stock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventory",
+                "products",
+                "{{productId}}",
+                "stock"
+              ]
             }
           }
         },
         {
-          "name": "List low-stock products",
+          "name": "List products with free stock at or below the threshold",
           "request": {
             "method": "GET",
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/inventory/low-stock?threshold=10&limit=100",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "inventory", "low-stock"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventory",
+                "low-stock"
+              ],
               "query": [
-                { "key": "threshold", "value": "10",  "description": "Free stock threshold" },
-                { "key": "limit",     "value": "100", "description": "Max results (1-500)" }
+                {
+                  "key": "threshold",
+                  "value": "10"
+                },
+                {
+                  "key": "limit",
+                  "value": "100"
+                }
               ]
             }
           }
@@ -225,17 +381,31 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/inventory/reserve",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "inventory", "reserve"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventory",
+                "reserve"
+              ]
             },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"productId\": \"prod-001\",\n  \"warehouseId\": \"wh-001\",\n  \"quantity\": 5,\n  \"orderId\": \"{{orderId}}\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           }
         },
@@ -244,36 +414,242 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/inventory/release",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "inventory", "release"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventory",
+                "release"
+              ]
             },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"productId\": \"prod-001\",\n  \"warehouseId\": \"wh-001\",\n  \"quantity\": 5,\n  \"orderId\": \"{{orderId}}\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           }
         },
         {
-          "name": "Manual stock adjustment",
+          "name": "Manual stock adjustment (positive = receive, negative = write-off)",
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/inventory/adjust",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "inventory", "adjust"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventory",
+                "adjust"
+              ]
             },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"productId\": \"prod-001\",\n  \"warehouseId\": \"wh-001\",\n  \"delta\": 50,\n  \"reason\": \"Received shipment\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "GraphQL Queries",
+      "item": [
+        {
+          "name": "Inventory Report",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query($categoryId: String, $warehouseId: String, $minStock: Int, $page: Int, $pageSize: Int) {\n  inventoryReport(categoryId: $categoryId, warehouseId: $warehouseId, minStock: $minStock, page: $page, pageSize: $pageSize) {\n    parentCategoryName\n    categoryName\n    productId\n    sku\n    productName\n    unitPrice\n    currency\n    warehouseId\n    warehouseName\n    region\n    quantityAvailable\n    quantityReserved\n    quantityFree\n    totalReceived\n    totalShipped\n    transactionCount\n    lastMovement\n  }\n}",
+                "variables": "{\n  \"categoryId\": \"\",\n  \"warehouseId\": \"\",\n  \"minStock\": 0,\n  \"page\": 0,\n  \"pageSize\": 100\n}"
+              }
+            }
+          }
+        },
+        {
+          "name": "Product Stock",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query($productId: ID!) {\n  productStock(productId: $productId) {\n    productId\n    sku\n    productName\n    unitPrice\n    currency\n    categoryName\n    warehouseId\n    warehouseName\n    region\n    quantityAvailable\n    quantityReserved\n    quantityFree\n    lastUpdated\n  }\n}",
+                "variables": "{\n  \"productId\": \"\"\n}"
+              }
+            }
+          }
+        },
+        {
+          "name": "Low Stock",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query($threshold: Int, $limit: Int) {\n  lowStock(threshold: $threshold, limit: $limit) {\n    productId\n    sku\n    productName\n    warehouseId\n    warehouseName\n    region\n    quantityAvailable\n    quantityReserved\n    quantityFree\n  }\n}",
+                "variables": "{\n  \"threshold\": 10,\n  \"limit\": 100\n}"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "GraphQL Mutations",
+      "item": [
+        {
+          "name": "Reserve Inventory",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation($input: ReserveInput!) {\n  reserveInventory(input: $input)\n}",
+                "variables": "{\n  \"input\": {\n    \"productId\": \"\",\n    \"warehouseId\": \"\",\n    \"quantity\": 0,\n    \"orderId\": \"\"\n  }\n}"
+              }
+            }
+          }
+        },
+        {
+          "name": "Release Inventory",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation($input: ReleaseInput!) {\n  releaseInventory(input: $input)\n}",
+                "variables": "{\n  \"input\": {\n    \"productId\": \"\",\n    \"warehouseId\": \"\",\n    \"quantity\": 0,\n    \"orderId\": \"\"\n  }\n}"
+              }
+            }
+          }
+        },
+        {
+          "name": "Adjust Inventory",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation($input: AdjustInput!) {\n  adjustInventory(input: $input)\n}",
+                "variables": "{\n  \"input\": {\n    \"productId\": \"\",\n    \"warehouseId\": \"\",\n    \"delta\": 0,\n    \"reason\": \"\"\n  }\n}"
+              }
             }
           }
         }

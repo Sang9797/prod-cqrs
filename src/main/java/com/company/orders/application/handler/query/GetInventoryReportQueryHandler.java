@@ -7,13 +7,14 @@ import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -121,12 +122,13 @@ public class GetInventoryReportQueryHandler
             + (needsTx ? TX_SUBQUERY : "")
             + SQL_WHERE_AND_ORDER;
 
-    Map<String, Object> params = new HashMap<>();
-    params.put("minStock", query.minStock());
-    params.put("categoryId", query.categoryId());
-    params.put("warehouseId", query.warehouseId());
-    params.put("pageSize", query.pageSize());
-    params.put("offset", (long) query.page() * query.pageSize());
+    MapSqlParameterSource params =
+        new MapSqlParameterSource()
+            .addValue("minStock", query.minStock())
+            .addValue("categoryId", query.categoryId(), Types.VARCHAR)
+            .addValue("warehouseId", query.warehouseId(), Types.VARCHAR)
+            .addValue("pageSize", query.pageSize())
+            .addValue("offset", (long) query.page() * query.pageSize());
 
     return jdbc.query(sql, params, (rs, rowNum) -> mapRow(rs, rowNum, fields, needsTx));
   }
