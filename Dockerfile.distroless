@@ -1,0 +1,244 @@
+# =============================================================================
+# CQRS Order Service — Multi-Stage Docker Build
+# Java 25 · Spring Boot 4 · Virtual Threads · Distroless Runtime
+#
+# Build stages:
+#   1. deps         — pull Maven base image; cache dependency layer
+#   2. builder      — compile source; extract Spring Boot layered JAR
+#   3. jlink        — detect required JDK modules; produce minimal custom JRE
+#   4. health-probe — compile a static Go binary for HEALTHCHECK (no shell in distroless)
+#   5. runtime      — final gcr.io/distroless/base-debian12:nonroot image
+#
+# Estimated final image size: ~160–200 MB
+#   distroless base   :  ~20 MB
+#   custom JRE (jlink):  ~55 MB   (vs ~200 MB full eclipse-temurin:25-jre)
+#   app layers        :  ~80 MB   (dependencies + spring-boot-loader + application)
+#   health-probe      :   ~5 MB
+# =============================================================================
+
+# =============================================================================
+# Stage 1 — deps
+# Pull the official Maven + JDK 25 image (Bookworm/Debian 12 variant ensures
+# glibc ABI compatibility with the distroless runtime image).
+# Copy pom.xml FIRST so Docker can cache this expensive download layer
+# independently of source code changes.
+# =============================================================================
+FROM maven:3.9-eclipse-temurin-25-bookworm AS deps
+
+# All build work happens here; keeps build artifacts off the root filesystem
+WORKDIR /build
+
+# --- pom.xml only: Docker caches this layer until the POM changes ---
+COPY pom.xml .
+
+# Download every declared dependency to the Maven local repo (~/.m2).
+# On subsequent builds the image layer cache is reused — no network needed
+# unless pom.xml has changed.
+# -q  : quiet output (Maven version banner and progress are suppressed)
+RUN mvn dependency:go-offline -q
+
+
+# =============================================================================
+# Stage 2 — builder
+# Inherit the populated Maven cache from Stage 1 (FROM deps).
+# Copy source files and build the fat JAR, then explode it using Spring Boot's
+# built-in jarmode=layertools to produce four ordered Docker layers.
+# =============================================================================
+FROM deps AS builder
+
+# Checkstyle configuration referenced by the Maven build plugin
+COPY checkstyle.xml .
+
+# Source tree — this layer is separate from pom.xml so that a code-only change
+# doesn't re-download dependencies
+COPY src ./src
+
+# Compile and package the Spring Boot fat JAR.
+# -DskipTests: unit/integration tests run in a dedicated CI step, not here.
+RUN mvn package -DskipTests -q
+
+# Explode the fat JAR using Spring Boot's layertools jarmode.
+# Output directories, ordered from least to most likely to change:
+#   dependencies/           — third-party runtime JARs (rarely change)
+#   spring-boot-loader/     — Spring Boot launcher bytecode (changes on SB upgrades)
+#   snapshot-dependencies/  — SNAPSHOT JARs (change on snapshot releases)
+#   application/            — your compiled classes + resources (changes every commit)
+# Each directory maps to a separate Docker layer, so only application/ is
+# re-uploaded to the registry on every code change.
+RUN java -Djarmode=layertools \
+         -jar target/cqrs-order-service-1.0.0.jar \
+         extract --destination /build/extracted
+
+
+# =============================================================================
+# Stage 3 — jlink
+# Use the full JDK image to:
+#   A) analyse the application bytecode with jdeps and discover the minimal
+#      set of JDK modules the app actually needs at runtime, then
+#   B) build a custom, stripped JRE with jlink using only those modules.
+#
+# jdeps approach: explode the fat JAR so jdeps can analyse BOOT-INF/classes
+# with --class-path pointing at the bundled third-party JARs in BOOT-INF/lib.
+# This is more accurate than running jdeps on the fat JAR directly because
+# Spring Boot's nested-JAR class loader is invisible to jdeps.
+# =============================================================================
+FROM eclipse-temurin:25-jdk-bookworm AS jlink
+
+WORKDIR /build
+
+# Copy the fat JAR (needed for jdeps analysis)
+COPY --from=builder /build/target/cqrs-order-service-1.0.0.jar app.jar
+
+# --- Step A: jdeps — module graph detection ---
+# --ignore-missing-deps : skip types resolved only via reflection/SPI at runtime
+# --print-module-deps   : emit a comma-separated list suitable for jlink --add-modules
+# --multi-release base  : read Multi-Release JARs using the base-version class files
+# --class-path "lib/*"  : ensures nested dependencies are on the analysis classpath
+# Falls back to java.base if jdeps cannot produce output (empty build artifact).
+#
+# --- Step B: augment with known runtime-only modules ---
+# jdeps cannot detect modules loaded dynamically via JNDI, JDBC SPI, JCE, JAAS,
+# or Spring's reflection-heavy bootstrap. These are always appended.
+#
+# --- Step C: jlink — custom JRE assembly ---
+# --strip-debug     : remove debug attributes from class files      (~10 MB saved)
+# --no-man-pages    : omit Unix manual pages                        (~1 MB saved)
+# --no-header-files : omit C header files                           (~1 MB saved)
+# --compress=2      : apply zip-level compression on resource files (~5 MB saved)
+RUN mkdir -p /tmp/exploded && \
+    cd /tmp/exploded && \
+    jar xf /build/app.jar && \
+    \
+    DETECTED=$(jdeps \
+                 --ignore-missing-deps \
+                 --print-module-deps \
+                 --multi-release base \
+                 --class-path "/tmp/exploded/BOOT-INF/lib/*" \
+                 -q \
+                 /tmp/exploded/BOOT-INF/classes \
+               2>/dev/null || echo "java.base") && \
+    \
+    MODULES="${DETECTED},java.instrument,java.management,java.naming,java.net.http,java.security.jgss,java.sql,java.xml.crypto,jdk.crypto.ec,jdk.management,jdk.unsupported" && \
+    \
+    jlink \
+      --module-path "${JAVA_HOME}/jmods" \
+      --add-modules "${MODULES}" \
+      --strip-debug \
+      --no-man-pages \
+      --no-header-files \
+      --compress=2 \
+      --output /custom-jre
+
+
+# =============================================================================
+# Stage 4 — health-probe
+# Compile a tiny static Go binary that GETs /actuator/health and exits 0 on
+# HTTP 2xx or exits 1 on error/non-2xx.
+#
+# Why Go instead of wget/curl?
+# gcr.io/distroless/base-debian12 ships NO shell, NO wget, NO curl.
+# A CGO_ENABLED=0 Go binary is fully statically linked (zero shared-lib deps),
+# so it runs in distroless without any additional library copies.
+# =============================================================================
+FROM golang:1.23-bookworm AS health-probe
+
+# Write the minimal health-check program directly in the build step
+RUN printf '%s\n' \
+    'package main' \
+    '' \
+    'import (' \
+    '        "net/http"' \
+    '        "os"' \
+    ')' \
+    '' \
+    'func main() {' \
+    '        resp, err := http.Get("http://localhost:9090/actuator/health")' \
+    '        if err != nil || resp.StatusCode < 200 || resp.StatusCode >= 300 {' \
+    '                os.Exit(1)' \
+    '        }' \
+    '        os.Exit(0)' \
+    '}' > /main.go
+
+# CGO_ENABLED=0  : disable cgo → fully static binary, no glibc dependency
+# GOOS=linux     : ensure a Linux ELF binary regardless of build host OS
+# -ldflags -s -w : strip symbol table and DWARF debug info (~30 % size reduction)
+# -trimpath      : remove host build paths from the binary (reproducibility)
+RUN CGO_ENABLED=0 GOOS=linux \
+    go build -ldflags="-s -w" -trimpath -o /health-probe /main.go
+
+
+# =============================================================================
+# Stage 5 — runtime
+# gcr.io/distroless/base-debian12:nonroot is a minimal Debian 12 layer
+# containing only: libc6, libssl3, ca-certificates.
+# No shell · No package manager · No debugging tools · No root user.
+# The :nonroot tag sets USER to UID/GID 65532 (the "nonroot" account).
+# =============================================================================
+FROM gcr.io/distroless/base-debian12:nonroot AS runtime
+
+# --- Custom JRE ---
+# Copy the jlink-produced JRE (~55 MB) into a well-known path.
+# The path is hardcoded so the exec-form ENTRYPOINT can reference it without
+# shell variable expansion (distroless has no shell).
+COPY --from=jlink /custom-jre /opt/java/jre
+
+# JAVA_HOME — required by some Spring Boot internals and Tomcat temp-file logic
+ENV JAVA_HOME=/opt/java/jre
+
+# Add the JRE bin/ directory to PATH so tooling (kubectl exec, etc.) can
+# invoke java directly without the absolute path
+ENV PATH="/opt/java/jre/bin:${PATH}"
+
+# --- Spring Boot layered JAR content ---
+# Copied in least-to-most-volatile order so the first three layers are reused
+# by Docker on every code-only change; only the last COPY (application/) is
+# ever invalidated during normal development.
+WORKDIR /app
+COPY --chown=65532:65532 --from=builder /build/extracted/dependencies           ./
+COPY --chown=65532:65532 --from=builder /build/extracted/spring-boot-loader     ./
+COPY --chown=65532:65532 --from=builder /build/extracted/snapshot-dependencies  ./
+COPY --chown=65532:65532 --from=builder /build/extracted/application            ./
+
+# --- Static health-probe binary ---
+# No shared library dependencies; works in distroless without any extra COPYs.
+COPY --from=health-probe /health-probe /usr/local/bin/health-probe
+
+# REST API (exposed to the load balancer / ingress)
+EXPOSE 8080
+# Spring Boot Actuator + Prometheus metrics (internal; never expose externally)
+EXPOSE 9090
+
+# HEALTHCHECK polls Spring Boot Actuator's composite health endpoint.
+# start-period=90s: allows time for Spring context initialisation, Liquibase
+# migrations, HikariCP pool warmup, and ZGC heap sizing before checks begin.
+# CMD must be exec-form (JSON array) — distroless has no shell for "CMD wget …".
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+    CMD ["/usr/local/bin/health-probe"]
+
+# --- Container-aware JVM flags (documented as a LABEL for reference) ---
+# UseContainerSupport    — read CPU quota + memory limit from cgroup, not host
+# MaxRAMPercentage=75.0  — cap heap at 75 % of the cgroup memory limit;
+#                          the remaining 25 % covers Metaspace, direct buffers,
+#                          thread stacks (virtual + carrier), and OS overhead
+# ExitOnOutOfMemoryError — crash-fast on OOM so the orchestrator restarts the
+#                          pod/container immediately instead of limping along
+# UseZGC + ZGenerational — low-pause GC; carrier threads are never paused
+#                          during ZGC cycles, ideal for virtual-thread workloads
+# file.encoding=UTF-8    — reproducible string handling independent of locale
+# profiles.active=prod   — activates application-prod.yml (PgBouncer, env vars)
+LABEL java.opts="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError -XX:+UseZGC -XX:+ZGenerational -Dfile.encoding=UTF-8 -Dspring.profiles.active=prod"
+
+# --- ENTRYPOINT ---
+# Exec-form (JSON array) is mandatory for distroless — shell form would require
+# /bin/sh which is absent.  Every element is a separate argv token; no shell
+# quoting or $VARIABLE expansion occurs here.
+# JarLauncher reads the layered-JAR directory structure copied into /app above.
+ENTRYPOINT ["/opt/java/jre/bin/java", \
+            "-XX:+UseContainerSupport", \
+            "-XX:MaxRAMPercentage=75.0", \
+            "-XX:+ExitOnOutOfMemoryError", \
+            "-XX:+UseZGC", \
+            "-XX:+ZGenerational", \
+            "-Dfile.encoding=UTF-8", \
+            "-Dspring.profiles.active=prod", \
+            "org.springframework.boot.loader.launch.JarLauncher"]
