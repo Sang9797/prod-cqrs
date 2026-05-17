@@ -16,51 +16,50 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @Transactional
 public class ReserveInventoryCommandHandler
-    implements CommandHandler<ReserveInventoryCommand, Void> {
+        implements
+            CommandHandler<ReserveInventoryCommand, Void> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ReserveInventoryCommandHandler.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ReserveInventoryCommandHandler.class);
 
-  private final InventoryRepository repository;
-  private final Counter inventoryReservations;
+    private final InventoryRepository repository;
+    private final Counter inventoryReservations;
 
-  public ReserveInventoryCommandHandler(
-      InventoryRepository repository, MeterRegistry meterRegistry) {
-    this.repository = repository;
-    this.inventoryReservations =
-        Counter.builder("inventory.reservations.total")
-            .description("Total number of inventory reservations")
-            .register(meterRegistry);
-  }
+    public ReserveInventoryCommandHandler(
+            InventoryRepository repository, MeterRegistry meterRegistry) {
+        this.repository = repository;
+        this.inventoryReservations = Counter.builder("inventory.reservations.total")
+                .description("Total number of inventory reservations")
+                .register(meterRegistry);
+    }
 
-  @Override
-  public Class<ReserveInventoryCommand> commandType() {
-    return ReserveInventoryCommand.class;
-  }
+    @Override
+    public Class<ReserveInventoryCommand> commandType() {
+        return ReserveInventoryCommand.class;
+    }
 
-  @Override
-  public Void handle(ReserveInventoryCommand cmd) {
-    LOG.info(
-        "[ReserveInventory] product={} warehouse={} qty={}",
-        cmd.productId(),
-        cmd.warehouseId(),
-        cmd.quantity());
+    @Override
+    public Void handle(ReserveInventoryCommand cmd) {
+        LOG.info(
+                "[ReserveInventory] product={} warehouse={} qty={}",
+                cmd.productId(),
+                cmd.warehouseId(),
+                cmd.quantity());
 
-    Inventory inv =
-        repository
-            .findByProductAndWarehouse(cmd.productId(), cmd.warehouseId())
-            .orElseThrow(() -> new ProductNotFoundException(cmd.productId()));
+        Inventory inv = repository
+                .findByProductAndWarehouse(cmd.productId(), cmd.warehouseId())
+                .orElseThrow(() -> new ProductNotFoundException(cmd.productId()));
 
-    inv.reserve(cmd.quantity());
-    repository.save(inv);
-    repository.recordTransaction(
-        cmd.productId(),
-        cmd.warehouseId(),
-        TransactionType.RESERVE,
-        -cmd.quantity(),
-        cmd.orderId(),
-        "Reserved for order " + cmd.orderId());
-    inventoryReservations.increment();
-    LOG.info("[ReserveInventory] reserved orderId={}", cmd.orderId());
-    return null;
-  }
+        inv.reserve(cmd.quantity());
+        repository.save(inv);
+        repository.recordTransaction(
+                cmd.productId(),
+                cmd.warehouseId(),
+                TransactionType.RESERVE,
+                -cmd.quantity(),
+                cmd.orderId(),
+                "Reserved for order " + cmd.orderId());
+        inventoryReservations.increment();
+        LOG.info("[ReserveInventory] reserved orderId={}", cmd.orderId());
+        return null;
+    }
 }

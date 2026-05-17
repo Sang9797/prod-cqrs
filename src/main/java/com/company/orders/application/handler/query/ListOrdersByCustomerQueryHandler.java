@@ -11,21 +11,22 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @Transactional(readOnly = true)
 public class ListOrdersByCustomerQueryHandler
-    implements QueryHandler<ListOrdersByCustomerQuery, List<Order>> {
+        implements
+            QueryHandler<ListOrdersByCustomerQuery, List<Order>> {
 
-  private final OrderRepository repository;
+    private final OrderRepository repository;
 
-  public ListOrdersByCustomerQueryHandler(OrderRepository r) {
-    this.repository = r;
-  }
+    public ListOrdersByCustomerQueryHandler(OrderRepository r) {
+        this.repository = r;
+    }
 
-  @Override
-  public Class<ListOrdersByCustomerQuery> queryType() {
-    return ListOrdersByCustomerQuery.class;
-  }
+    @Override
+    public Class<ListOrdersByCustomerQuery> queryType() {
+        return ListOrdersByCustomerQuery.class;
+    }
 
-  @Override
-  public List<Order> handle(ListOrdersByCustomerQuery query) {
-    return repository.findByCustomerId(query.customerId());
-  }
+    @Override
+    public List<Order> handle(ListOrdersByCustomerQuery query) {
+        return repository.findByCustomerId(query.customerId());
+    }
 }

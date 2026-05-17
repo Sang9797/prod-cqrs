@@ -15,33 +15,31 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class CancelOrderCommandHandler implements CommandHandler<CancelOrderCommand, Void> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(CancelOrderCommandHandler.class);
-  private final OrderRepository repository;
-  private final Counter ordersCancelled;
+    private static final Logger LOG = LoggerFactory.getLogger(CancelOrderCommandHandler.class);
+    private final OrderRepository repository;
+    private final Counter ordersCancelled;
 
-  public CancelOrderCommandHandler(OrderRepository repository, MeterRegistry meterRegistry) {
-    this.repository = repository;
-    this.ordersCancelled =
-        Counter.builder("orders.cancelled.total")
-            .description("Total number of orders cancelled")
-            .register(meterRegistry);
-  }
+    public CancelOrderCommandHandler(OrderRepository repository, MeterRegistry meterRegistry) {
+        this.repository = repository;
+        this.ordersCancelled = Counter.builder("orders.cancelled.total")
+                .description("Total number of orders cancelled")
+                .register(meterRegistry);
+    }
 
-  @Override
-  public Class<CancelOrderCommand> commandType() {
-    return CancelOrderCommand.class;
-  }
+    @Override
+    public Class<CancelOrderCommand> commandType() {
+        return CancelOrderCommand.class;
+    }
 
-  @Override
-  public Void handle(CancelOrderCommand cmd) {
-    LOG.info("[CancelOrder] orderId={} reason={}", cmd.orderId(), cmd.reason());
-    var order =
-        repository
-            .findById(cmd.orderId())
-            .orElseThrow(() -> new OrderNotFoundException(cmd.orderId()));
-    order.cancel(cmd.reason());
-    repository.save(order);
-    ordersCancelled.increment();
-    return null;
-  }
+    @Override
+    public Void handle(CancelOrderCommand cmd) {
+        LOG.info("[CancelOrder] orderId={} reason={}", cmd.orderId(), cmd.reason());
+        var order = repository
+                .findById(cmd.orderId())
+                .orElseThrow(() -> new OrderNotFoundException(cmd.orderId()));
+        order.cancel(cmd.reason());
+        repository.save(order);
+        ordersCancelled.increment();
+        return null;
+    }
 }

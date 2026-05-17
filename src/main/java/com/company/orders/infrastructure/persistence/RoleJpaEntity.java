@@ -12,36 +12,44 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "roles")
+@Table(
+        name = "roles")
 public class RoleJpaEntity {
 
-  @Id
-  @Column(name = "role_id")
-  private String roleId;
+    @Id
+    @Column(
+            name = "role_id")
+    private String roleId;
 
-  @Column(nullable = false, unique = true)
-  private String name;
+    @Column(
+            nullable = false,
+            unique = true)
+    private String name;
 
-  private String description;
+    private String description;
 
-  @ManyToMany(fetch = FetchType.EAGER)
-  @JoinTable(
-      name = "role_permissions",
-      joinColumns = @JoinColumn(name = "role_id"),
-      inverseJoinColumns = @JoinColumn(name = "permission_id"))
-  private Set<PermissionJpaEntity> permissions = new HashSet<>();
+    @ManyToMany(
+            fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "role_permissions",
+            joinColumns = @JoinColumn(
+                    name = "role_id"),
+            inverseJoinColumns = @JoinColumn(
+                    name = "permission_id"))
+    private Set<PermissionJpaEntity> permissions = new HashSet<>();
 
-  protected RoleJpaEntity() {}
+    protected RoleJpaEntity() {
+    }
 
-  public String getRoleId() {
-    return roleId;
-  }
+    public String getRoleId() {
+        return roleId;
+    }
 
-  public String getName() {
-    return name;
-  }
+    public String getName() {
+        return name;
+    }
 
-  public Set<PermissionJpaEntity> getPermissions() {
-    return permissions;
-  }
+    public Set<PermissionJpaEntity> getPermissions() {
+        return permissions;
+    }
 }

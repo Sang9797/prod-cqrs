@@ -3,7 +3,6 @@ package com.company.orders.presentation;
 import com.company.orders.presentation.auth.AppUserDetailsService;
 import com.company.orders.presentation.auth.JwtAuthFilter;
 import com.company.orders.presentation.auth.JwtProperties;
-import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -26,56 +25,54 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableConfigurationProperties(JwtProperties.class)
 public class SecurityConfig {
 
-  @Bean
-  public PasswordEncoder passwordEncoder() {
-    return new BCryptPasswordEncoder();
-  }
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 
-  @Bean
-  public DaoAuthenticationProvider authenticationProvider(
-      AppUserDetailsService userDetailsService, PasswordEncoder encoder) {
-    var provider = new DaoAuthenticationProvider(userDetailsService);
-    provider.setPasswordEncoder(encoder);
-    return provider;
-  }
+    @Bean
+    public DaoAuthenticationProvider authenticationProvider(
+            AppUserDetailsService userDetailsService, PasswordEncoder encoder) {
+        var provider = new DaoAuthenticationProvider(userDetailsService);
+        provider.setPasswordEncoder(encoder);
+        return provider;
+    }
 
-  @Bean
-  public AuthenticationManager authenticationManager(AuthenticationConfiguration config)
-      throws Exception {
-    return config.getAuthenticationManager();
-  }
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config)
+            throws Exception {
+        return config.getAuthenticationManager();
+    }
 
-  @Bean
-  public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter)
-      throws Exception {
-    return http.csrf(AbstractHttpConfigurer::disable)
-        .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .authorizeHttpRequests(
-            auth ->
-                    auth.requestMatchers("/actuator/**")
-                    .permitAll()
-                    .requestMatchers("/swagger-ui/**", "/v3/api-docs/**")
-                    .permitAll()
-                    .requestMatchers("/graphiql/**", "/graphql/schema.graphqls")
-                    .permitAll()
-                    .requestMatchers(HttpMethod.POST, "/api/v1/auth/login")
-                    .permitAll()
-                    .requestMatchers(HttpMethod.POST, "/api/v1/**")
-                    .authenticated()
-                    .requestMatchers(HttpMethod.PUT, "/api/v1/**")
-                    .authenticated()
-                    .requestMatchers(HttpMethod.DELETE, "/api/v1/**")
-                    .authenticated()
-                    .requestMatchers(HttpMethod.GET, "/api/v1/**")
-                    .authenticated()
-                    .anyRequest()
-                    .authenticated())
-        .exceptionHandling(
-            e ->
-                e.authenticationEntryPoint(
-                    (req, res, ex) ->
-                        res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")))
-        .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-        .build();
-  }
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter)
+            throws Exception {
+        return http.csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(
+                        auth -> auth.requestMatchers("/actuator/**")
+                                .permitAll()
+                                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**")
+                                .permitAll()
+                                .requestMatchers("/graphiql/**", "/graphql/schema.graphqls")
+                                .permitAll()
+                                .requestMatchers(HttpMethod.POST, "/api/v1/auth/login")
+                                .permitAll()
+                                .requestMatchers(HttpMethod.POST, "/api/v1/**")
+                                .authenticated()
+                                .requestMatchers(HttpMethod.PUT, "/api/v1/**")
+                                .authenticated()
+                                .requestMatchers(HttpMethod.DELETE, "/api/v1/**")
+                                .authenticated()
+                                .requestMatchers(HttpMethod.GET, "/api/v1/**")
+                                .authenticated()
+                                .anyRequest()
+                                .authenticated())
+                .exceptionHandling(
+                        e -> e.authenticationEntryPoint(
+                                (req, res, ex) -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED,
+                                        "Unauthorized")))
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .build();
+    }
 }

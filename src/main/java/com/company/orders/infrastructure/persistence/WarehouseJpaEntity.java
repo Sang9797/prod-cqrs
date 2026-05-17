@@ -10,63 +10,64 @@ import java.time.Instant;
 @Table(name = "warehouses")
 public class WarehouseJpaEntity {
 
-  @Id
-  @Column(name = "warehouse_id", length = 36)
-  private String warehouseId;
+    @Id
+    @Column(name = "warehouse_id", length = 36)
+    private String warehouseId;
 
-  @Column(nullable = false, length = 100)
-  private String name;
+    @Column(nullable = false, length = 100)
+    private String name;
 
-  @Column(name = "location_code", nullable = false, length = 20, unique = true)
-  private String locationCode;
+    @Column(name = "location_code", nullable = false, length = 20, unique = true)
+    private String locationCode;
 
-  @Column(nullable = false, length = 20)
-  private String region;
+    @Column(nullable = false, length = 20)
+    private String region;
 
-  @Column(name = "is_active", nullable = false)
-  private boolean active;
+    @Column(name = "is_active", nullable = false)
+    private boolean active;
 
-  @Column(name = "created_at", nullable = false)
-  private Instant createdAt;
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt;
 
-  public WarehouseJpaEntity() {}
+    public WarehouseJpaEntity() {
+    }
 
-  public WarehouseJpaEntity(
-      String warehouseId,
-      String name,
-      String locationCode,
-      String region,
-      boolean active,
-      Instant createdAt) {
-    this.warehouseId = warehouseId;
-    this.name = name;
-    this.locationCode = locationCode;
-    this.region = region;
-    this.active = active;
-    this.createdAt = createdAt;
-  }
+    public WarehouseJpaEntity(
+            String warehouseId,
+            String name,
+            String locationCode,
+            String region,
+            boolean active,
+            Instant createdAt) {
+        this.warehouseId = warehouseId;
+        this.name = name;
+        this.locationCode = locationCode;
+        this.region = region;
+        this.active = active;
+        this.createdAt = createdAt;
+    }
 
-  public String getWarehouseId() {
-    return warehouseId;
-  }
+    public String getWarehouseId() {
+        return warehouseId;
+    }
 
-  public String getName() {
-    return name;
-  }
+    public String getName() {
+        return name;
+    }
 
-  public String getLocationCode() {
-    return locationCode;
-  }
+    public String getLocationCode() {
+        return locationCode;
+    }
 
-  public String getRegion() {
-    return region;
-  }
+    public String getRegion() {
+        return region;
+    }
 
-  public boolean isActive() {
-    return active;
-  }
+    public boolean isActive() {
+        return active;
+    }
 
-  public Instant getCreatedAt() {
-    return createdAt;
-  }
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
 }

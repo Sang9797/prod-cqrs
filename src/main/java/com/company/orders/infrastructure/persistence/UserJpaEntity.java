@@ -12,50 +12,61 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "users")
+@Table(
+        name = "users")
 public class UserJpaEntity {
 
-  @Id
-  @Column(name = "user_id")
-  private String userId;
+    @Id
+    @Column(
+            name = "user_id")
+    private String userId;
 
-  @Column(nullable = false, unique = true)
-  private String username;
+    @Column(
+            nullable = false,
+            unique = true)
+    private String username;
 
-  @Column(name = "password_hash", nullable = false)
-  private String passwordHash;
+    @Column(
+            name = "password_hash",
+            nullable = false)
+    private String passwordHash;
 
-  private String email;
+    private String email;
 
-  @Column(nullable = false)
-  private boolean enabled;
+    @Column(
+            nullable = false)
+    private boolean enabled;
 
-  @ManyToMany(fetch = FetchType.EAGER)
-  @JoinTable(
-      name = "user_roles",
-      joinColumns = @JoinColumn(name = "user_id"),
-      inverseJoinColumns = @JoinColumn(name = "role_id"))
-  private Set<RoleJpaEntity> roles = new HashSet<>();
+    @ManyToMany(
+            fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "user_roles",
+            joinColumns = @JoinColumn(
+                    name = "user_id"),
+            inverseJoinColumns = @JoinColumn(
+                    name = "role_id"))
+    private Set<RoleJpaEntity> roles = new HashSet<>();
 
-  protected UserJpaEntity() {}
+    protected UserJpaEntity() {
+    }
 
-  public String getUserId() {
-    return userId;
-  }
+    public String getUserId() {
+        return userId;
+    }
 
-  public String getUsername() {
-    return username;
-  }
+    public String getUsername() {
+        return username;
+    }
 
-  public String getPasswordHash() {
-    return passwordHash;
-  }
+    public String getPasswordHash() {
+        return passwordHash;
+    }
 
-  public boolean isEnabled() {
-    return enabled;
-  }
+    public boolean isEnabled() {
+        return enabled;
+    }
 
-  public Set<RoleJpaEntity> getRoles() {
-    return roles;
-  }
+    public Set<RoleJpaEntity> getRoles() {
+        return roles;
+    }
 }

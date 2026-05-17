@@ -12,19 +12,19 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class GetOrderByIdQueryHandler implements QueryHandler<GetOrderByIdQuery, Optional<Order>> {
 
-  private final OrderRepository repository;
+    private final OrderRepository repository;
 
-  public GetOrderByIdQueryHandler(OrderRepository repository) {
-    this.repository = repository;
-  }
+    public GetOrderByIdQueryHandler(OrderRepository repository) {
+        this.repository = repository;
+    }
 
-  @Override
-  public Class<GetOrderByIdQuery> queryType() {
-    return GetOrderByIdQuery.class;
-  }
+    @Override
+    public Class<GetOrderByIdQuery> queryType() {
+        return GetOrderByIdQuery.class;
+    }
 
-  @Override
-  public Optional<Order> handle(GetOrderByIdQuery query) {
-    return repository.findById(query.orderId());
-  }
+    @Override
+    public Optional<Order> handle(GetOrderByIdQuery query) {
+        return repository.findById(query.orderId());
+    }
 }

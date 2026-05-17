@@ -14,36 +14,33 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AppUserDetailsService implements UserDetailsService {
 
-  private final UserJpaRepository userRepository;
+    private final UserJpaRepository userRepository;
 
-  public AppUserDetailsService(UserJpaRepository userRepository) {
-    this.userRepository = userRepository;
-  }
+    public AppUserDetailsService(UserJpaRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
-  @Override
-  @Transactional(readOnly = true)
-  public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-    var entity =
-        userRepository
-            .findByUsername(username)
-            .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+    @Override
+    @Transactional(readOnly = true)
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        var entity = userRepository
+                .findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
 
-    // Authorities = roles + permissions (Spring Security sees both)
-    var authorities =
-        entity.getRoles().stream()
-            .flatMap(
-                role ->
-                    Stream.concat(
-                        Stream.of(new SimpleGrantedAuthority(role.getName())),
-                        role.getPermissions().stream()
-                            .map(p -> new SimpleGrantedAuthority(p.getName()))))
-            .collect(Collectors.toSet());
+        // Authorities = roles + permissions (Spring Security sees both)
+        var authorities = entity.getRoles().stream()
+                .flatMap(
+                        role -> Stream.concat(
+                                Stream.of(new SimpleGrantedAuthority(role.getName())),
+                                role.getPermissions().stream()
+                                        .map(p -> new SimpleGrantedAuthority(p.getName()))))
+                .collect(Collectors.toSet());
 
-    return User.builder()
-        .username(entity.getUsername())
-        .password(entity.getPasswordHash())
-        .authorities(authorities)
-        .disabled(!entity.isEnabled())
-        .build();
-  }
+        return User.builder()
+                .username(entity.getUsername())
+                .password(entity.getPasswordHash())
+                .authorities(authorities)
+                .disabled(!entity.isEnabled())
+                .build();
+    }
 }

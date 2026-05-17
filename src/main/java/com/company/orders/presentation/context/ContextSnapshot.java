@@ -1,19 +1,17 @@
 package com.company.orders.presentation.context;
 
+import java.util.Map;
+import java.util.concurrent.Callable;
 import org.slf4j.MDC;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
-
-import java.util.Map;
-import java.util.concurrent.Callable;
 
 public class ContextSnapshot {
 
     private final SecurityContext securityContext;
     private final Map<String, String> mdcContext;
 
-    public ContextSnapshot(SecurityContext securityContext,
-                           Map<String, String> mdcContext) {
+    public ContextSnapshot(SecurityContext securityContext, Map<String, String> mdcContext) {
         this.securityContext = securityContext;
         this.mdcContext = mdcContext;
     }

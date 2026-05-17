@@ -16,6 +16,7 @@
     <property name="charset" value="UTF-8"/>
     <property name="severity" value="error"/>
     <property name="fileExtensions" value="java"/>
+    <property name="tabWidth" value="4"/>
 
     <!-- No tab characters — Google style uses spaces -->
     <module name="FileTabCharacter">
@@ -122,6 +123,13 @@
         <module name="RedundantModifier"/>
 
         <!-- ── Coding Standards ─────────────────────────────────────────── -->
+
+        <!-- Indentation: 4 spaces, wrapped continuations use 8 spaces -->
+        <module name="Indentation">
+            <property name="basicOffset" value="4"/>
+            <property name="lineWrappingIndentation" value="8"/>
+            <property name="arrayInitIndent" value="4"/>
+        </module>
 
         <!-- One variable declaration per statement -->
         <module name="MultipleVariableDeclarations"/>

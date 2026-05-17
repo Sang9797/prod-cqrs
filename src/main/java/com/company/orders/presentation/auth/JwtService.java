@@ -12,40 +12,40 @@ import org.springframework.stereotype.Service;
 @Service
 public class JwtService {
 
-  private final JwtProperties properties;
+    private final JwtProperties properties;
 
-  public JwtService(JwtProperties properties) {
-    this.properties = properties;
-  }
-
-  public String generateToken(String username) {
-    long now = System.currentTimeMillis();
-    return Jwts.builder()
-        .subject(username)
-        .issuedAt(new Date(now))
-        .expiration(new Date(now + properties.expirationMs()))
-        .signWith(signingKey())
-        .compact();
-  }
-
-  public String extractUsername(String token) {
-    return claims(token).getSubject();
-  }
-
-  public boolean isTokenValid(String token) {
-    try {
-      claims(token);
-      return true;
-    } catch (JwtException e) {
-      return false;
+    public JwtService(JwtProperties properties) {
+        this.properties = properties;
     }
-  }
 
-  private Claims claims(String token) {
-    return Jwts.parser().verifyWith(signingKey()).build().parseSignedClaims(token).getPayload();
-  }
+    public String generateToken(String username) {
+        long now = System.currentTimeMillis();
+        return Jwts.builder()
+                .subject(username)
+                .issuedAt(new Date(now))
+                .expiration(new Date(now + properties.expirationMs()))
+                .signWith(signingKey())
+                .compact();
+    }
 
-  private SecretKey signingKey() {
-    return Keys.hmacShaKeyFor(Decoders.BASE64.decode(properties.secret()));
-  }
+    public String extractUsername(String token) {
+        return claims(token).getSubject();
+    }
+
+    public boolean isTokenValid(String token) {
+        try {
+            claims(token);
+            return true;
+        } catch (JwtException e) {
+            return false;
+        }
+    }
+
+    private Claims claims(String token) {
+        return Jwts.parser().verifyWith(signingKey()).build().parseSignedClaims(token).getPayload();
+    }
+
+    private SecretKey signingKey() {
+        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(properties.secret()));
+    }
 }

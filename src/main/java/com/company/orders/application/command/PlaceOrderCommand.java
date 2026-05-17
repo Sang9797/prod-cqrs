@@ -5,7 +5,9 @@ import com.company.orders.domain.model.Order;
 import java.util.List;
 
 public record PlaceOrderCommand(String customerId, List<OrderItemCmd> items)
-    implements Command<Order> {
-  public record OrderItemCmd(
-      String productId, String productName, int quantity, double unitPrice, String currency) {}
+        implements
+            Command<Order> {
+    public record OrderItemCmd(
+            String productId, String productName, int quantity, double unitPrice, String currency) {
+    }
 }

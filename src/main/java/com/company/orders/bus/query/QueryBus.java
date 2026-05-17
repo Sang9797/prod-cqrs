@@ -13,35 +13,35 @@ import org.springframework.stereotype.Component;
 @Component
 public class QueryBus {
 
-  private static final Logger LOG = LoggerFactory.getLogger(QueryBus.class);
-  private final Map<Class<?>, QueryHandler<?, ?>> registry = new HashMap<>();
-  private final MeterRegistry meterRegistry;
+    private static final Logger LOG = LoggerFactory.getLogger(QueryBus.class);
+    private final Map<Class<?>, QueryHandler<?, ?>> registry = new HashMap<>();
+    private final MeterRegistry meterRegistry;
 
-  public QueryBus(List<QueryHandler<?, ?>> handlers, MeterRegistry meterRegistry) {
-    this.meterRegistry = meterRegistry;
-    handlers.forEach(
-        h -> {
-          registry.put(h.queryType(), h);
-          LOG.info(
-              "[QueryBus] registered {} → {}",
-              h.queryType().getSimpleName(),
-              h.getClass().getSimpleName());
-        });
-    LOG.info("[QueryBus] ready — {} handler(s)", registry.size());
-  }
-
-  @SuppressWarnings("unchecked")
-  public <Q extends Query<R>, R> R dispatch(Q query) {
-    var handler = (QueryHandler<Q, R>) registry.get(query.getClass());
-    if (handler == null) {
-      throw new IllegalStateException(
-          "No handler registered for: " + query.getClass().getSimpleName());
+    public QueryBus(List<QueryHandler<?, ?>> handlers, MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+        handlers.forEach(
+                h -> {
+                    registry.put(h.queryType(), h);
+                    LOG.info(
+                            "[QueryBus] registered {} → {}",
+                            h.queryType().getSimpleName(),
+                            h.getClass().getSimpleName());
+                });
+        LOG.info("[QueryBus] ready — {} handler(s)", registry.size());
     }
-    LOG.debug("[QueryBus] dispatching {}", query.getClass().getSimpleName());
-    return Timer.builder("cqrs.query.duration")
-        .tag("query", query.getClass().getSimpleName())
-        .description("Time to handle a query")
-        .register(meterRegistry)
-        .record(() -> handler.handle(query));
-  }
+
+    @SuppressWarnings("unchecked")
+    public <Q extends Query<R>, R> R dispatch(Q query) {
+        var handler = (QueryHandler<Q, R>) registry.get(query.getClass());
+        if (handler == null) {
+            throw new IllegalStateException(
+                    "No handler registered for: " + query.getClass().getSimpleName());
+        }
+        LOG.debug("[QueryBus] dispatching {}", query.getClass().getSimpleName());
+        return Timer.builder("cqrs.query.duration")
+                .tag("query", query.getClass().getSimpleName())
+                .description("Time to handle a query")
+                .register(meterRegistry)
+                .record(() -> handler.handle(query));
+    }
 }

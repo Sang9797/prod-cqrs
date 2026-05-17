@@ -5,7 +5,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 public class ContextSnapshotFactory {
 
-  public ContextSnapshot capture() {
-    return new ContextSnapshot(SecurityContextHolder.getContext(), MDC.getCopyOfContextMap());
-  }
+    public ContextSnapshot capture() {
+        return new ContextSnapshot(SecurityContextHolder.getContext(), MDC.getCopyOfContextMap());
+    }
 }

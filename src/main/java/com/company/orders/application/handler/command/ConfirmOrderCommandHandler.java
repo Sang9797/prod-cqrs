@@ -15,33 +15,31 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class ConfirmOrderCommandHandler implements CommandHandler<ConfirmOrderCommand, Void> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ConfirmOrderCommandHandler.class);
-  private final OrderRepository repository;
-  private final Counter ordersConfirmed;
+    private static final Logger LOG = LoggerFactory.getLogger(ConfirmOrderCommandHandler.class);
+    private final OrderRepository repository;
+    private final Counter ordersConfirmed;
 
-  public ConfirmOrderCommandHandler(OrderRepository repository, MeterRegistry meterRegistry) {
-    this.repository = repository;
-    this.ordersConfirmed =
-        Counter.builder("orders.confirmed.total")
-            .description("Total number of orders confirmed")
-            .register(meterRegistry);
-  }
+    public ConfirmOrderCommandHandler(OrderRepository repository, MeterRegistry meterRegistry) {
+        this.repository = repository;
+        this.ordersConfirmed = Counter.builder("orders.confirmed.total")
+                .description("Total number of orders confirmed")
+                .register(meterRegistry);
+    }
 
-  @Override
-  public Class<ConfirmOrderCommand> commandType() {
-    return ConfirmOrderCommand.class;
-  }
+    @Override
+    public Class<ConfirmOrderCommand> commandType() {
+        return ConfirmOrderCommand.class;
+    }
 
-  @Override
-  public Void handle(ConfirmOrderCommand cmd) {
-    LOG.info("[ConfirmOrder] orderId={}", cmd.orderId());
-    var order =
-        repository
-            .findById(cmd.orderId())
-            .orElseThrow(() -> new OrderNotFoundException(cmd.orderId()));
-    order.confirm();
-    repository.save(order);
-    ordersConfirmed.increment();
-    return null;
-  }
+    @Override
+    public Void handle(ConfirmOrderCommand cmd) {
+        LOG.info("[ConfirmOrder] orderId={}", cmd.orderId());
+        var order = repository
+                .findById(cmd.orderId())
+                .orElseThrow(() -> new OrderNotFoundException(cmd.orderId()));
+        order.confirm();
+        repository.save(order);
+        ordersConfirmed.increment();
+        return null;
+    }
 }

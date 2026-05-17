@@ -17,27 +17,29 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/auth")
 public class AuthController {
 
-  private final AuthenticationManager authManager;
-  private final JwtService jwtService;
+    private final AuthenticationManager authManager;
+    private final JwtService jwtService;
 
-  public AuthController(AuthenticationManager authManager, JwtService jwtService) {
-    this.authManager = authManager;
-    this.jwtService = jwtService;
-  }
-
-  @PostMapping("/login")
-  public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
-    try {
-      Authentication auth =
-          authManager.authenticate(
-              new UsernamePasswordAuthenticationToken(request.username(), request.password()));
-      return ResponseEntity.ok(new TokenResponse(jwtService.generateToken(auth.getName())));
-    } catch (AuthenticationException e) {
-      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    public AuthController(AuthenticationManager authManager, JwtService jwtService) {
+        this.authManager = authManager;
+        this.jwtService = jwtService;
     }
-  }
 
-  public record LoginRequest(@NotBlank String username, @NotBlank String password) {}
+    @PostMapping("/login")
+    public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
+        try {
+            Authentication auth = authManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.username(),
+                            request.password()));
+            return ResponseEntity.ok(new TokenResponse(jwtService.generateToken(auth.getName())));
+        } catch (AuthenticationException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+    }
 
-  public record TokenResponse(String token) {}
+    public record LoginRequest(@NotBlank String username, @NotBlank String password) {
+    }
+
+    public record TokenResponse(String token) {
+    }
 }

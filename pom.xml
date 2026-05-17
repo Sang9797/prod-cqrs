@@ -29,7 +29,7 @@
 
         <!-- Code style versions -->
         <spotless.version>2.44.5</spotless.version>
-        <google-java-format.version>1.27.0</google-java-format.version>
+        <eclipse-formatter.version>4.32</eclipse-formatter.version>
         <checkstyle.version>3.6.0</checkstyle.version>
         <checkstyle-tool.version>10.21.4</checkstyle-tool.version>
     </properties>
@@ -172,7 +172,7 @@
                 </configuration>
             </plugin>
 
-            <!-- ── Code Formatting: Spotless + Google Java Format ─────────── -->
+            <!-- ── Code Formatting: Spotless + Eclipse Formatter ──────────── -->
             <!--
                 spotless:apply  → auto-format all Java sources
                 spotless:check  → fail build if any file is not formatted
@@ -188,14 +188,12 @@
                             <include>src/main/java/**/*.java</include>
                             <include>src/test/java/**/*.java</include>
                         </includes>
-                        <!-- Google Java Format: the canonical Java formatter -->
-                        <googleJavaFormat>
-                            <version>${google-java-format.version}</version>
-                            <style>GOOGLE</style>
-                            <reflowLongStrings>true</reflowLongStrings>
-                            <groupArtifact>com.google.googlejavaformat:google-java-format</groupArtifact>
-                        </googleJavaFormat>
-                        <!-- Remove unused imports (Spotless handles before GJF) -->
+                        <!-- Eclipse JDT formatter configured for 4-space indentation -->
+                        <eclipse>
+                            <version>${eclipse-formatter.version}</version>
+                            <file>${project.basedir}/config/eclipse-java-formatter.xml</file>
+                        </eclipse>
+                        <!-- Remove unused imports before formatting -->
                         <removeUnusedImports/>
                         <!-- Consistent line endings -->
                         <trimTrailingWhitespace/>

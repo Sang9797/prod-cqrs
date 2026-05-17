@@ -9,22 +9,23 @@ import jakarta.persistence.Table;
 @Table(name = "permissions")
 public class PermissionJpaEntity {
 
-  @Id
-  @Column(name = "permission_id")
-  private String permissionId;
+    @Id
+    @Column(name = "permission_id")
+    private String permissionId;
 
-  @Column(nullable = false, unique = true)
-  private String name;
+    @Column(nullable = false, unique = true)
+    private String name;
 
-  private String description;
+    private String description;
 
-  protected PermissionJpaEntity() {}
+    protected PermissionJpaEntity() {
+    }
 
-  public String getPermissionId() {
-    return permissionId;
-  }
+    public String getPermissionId() {
+        return permissionId;
+    }
 
-  public String getName() {
-    return name;
-  }
+    public String getName() {
+        return name;
+    }
 }

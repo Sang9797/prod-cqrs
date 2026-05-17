@@ -335,14 +335,21 @@ cp .env.example .env
 
 ## Code Style
 
-Google Java Format (2-space indent, 100-char lines) + Checkstyle naming rules. Both enforced on every Maven build.
+Spotless uses the Eclipse JDT formatter profile at
+`config/eclipse-java-formatter.xml`. The project style is spaces only, 4-space
+block indentation, 8-space continuation indentation, and 100-character lines.
+Checkstyle enforces the same indentation settings plus naming and coding rules.
+Both Spotless and Checkstyle run during Maven `validate`.
 
 ```bash
 mvn spotless:apply   # auto-fix formatting
 mvn validate         # check formatting + Checkstyle (run before pushing)
 ```
 
-Checkstyle rules (must be fixed manually): no wildcard imports, `UPPER_SNAKE_CASE` constants, one statement per line, `switch` must have `default`, array brackets on type.
+Checkstyle rules that may still require manual fixes: no wildcard imports,
+`UPPER_SNAKE_CASE` constants, one statement per line, `switch` must have
+`default`, array brackets on type, and line-length issues that the formatter
+cannot safely split.
 
 ---
 
